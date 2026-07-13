@@ -163,6 +163,17 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Cancel booking — revert status back to calon
+  void cancelBooking() {
+    _currentRole = UserRole.calon;
+    _bookingData = null;
+    if (_userEmail != null) {
+      _registeredUsers[_userEmail!]?['role'] = 'calon';
+      _pendingApprovals.removeWhere((p) => p.email == _userEmail);
+    }
+    notifyListeners();
+  }
+
   /// Called by admin to approve a pending user — upgrades them to full resident
   void adminApproveUser(String email, String roomNumber) {
     final userEntry = _registeredUsers[email];

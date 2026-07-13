@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../utils/app_theme.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
+import 'admin_panel_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -197,6 +198,14 @@ class ProfileScreen extends StatelessWidget {
                 ),
               );
             }),
+            const SizedBox(height: 12),
+            // Tombol simulasi admin untuk demo interview
+            _menuTile(Icons.admin_panel_settings_outlined, 'Simulasi Akun Admin (Demo)', () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AdminPanelScreen()),
+              );
+            }, trailingColor: Colors.blue),
             const SizedBox(height: 40),
 
             // Logout Button
@@ -399,23 +408,24 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _menuTile(IconData icon, String title, VoidCallback onTap, {Widget? trailing}) {
+  Widget _menuTile(IconData icon, String title, VoidCallback onTap, {Widget? trailing, Color? trailingColor}) {
+    final iconCol = trailingColor ?? AppTheme.primaryBlack;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: trailingColor != null ? trailingColor.withOpacity(0.05) : Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(color: trailingColor != null ? trailingColor.withOpacity(0.3) : Colors.grey.shade200),
         ),
         child: Row(
           children: [
-            Icon(icon, color: AppTheme.primaryBlack, size: 22),
+            Icon(icon, color: iconCol, size: 22),
             const SizedBox(width: 16),
-            Expanded(child: Text(title, style: const TextStyle(color: AppTheme.primaryBlack, fontWeight: FontWeight.w500, fontSize: 14))),
+            Expanded(child: Text(title, style: TextStyle(color: iconCol, fontWeight: FontWeight.w500, fontSize: 14))),
             if (trailing != null) trailing,
-            if (trailing == null) const Icon(Icons.arrow_forward_ios, color: AppTheme.textMuted, size: 14),
+            if (trailing == null) Icon(Icons.arrow_forward_ios, color: trailingColor ?? AppTheme.textMuted, size: 14),
           ],
         ),
       ),

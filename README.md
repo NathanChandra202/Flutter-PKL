@@ -18,7 +18,7 @@ flutter run -d chrome
 | role | email | password |
 |---|---|---|
 | calon penghuni | calon@kostraktor.com | 123456 |
-| admin | admin@kostraktor.com | admin123 |
+| admin | admin@kostraktor.comksih | admin123 |
 
 atau bisa daftar sendiri, email bebas apa aja
 
@@ -26,7 +26,7 @@ atau bisa daftar sendiri, email bebas apa aja
 
 ## cara pakainya
 
-**kalau lo calon penghuni:**
+**kalau calon penghuni:**
 
 - buka app, lihat-lihat unit dulu di home
 - kalau mau sewa, klik unit terus klik ajukan sewa
@@ -35,7 +35,7 @@ atau bisa daftar sendiri, email bebas apa aja
 - transfer ke rekening yang muncul, nominalnya harus tepat termasuk kode uniknya
 - klik konfirmasi, udah — tinggal tunggu admin approve
 
-**kalau lo admin:**
+**kalau admin:**
 
 - login pake akun admin, langsung masuk ke panel
 - pilih user dari antrian yang muncul
