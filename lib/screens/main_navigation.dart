@@ -7,7 +7,6 @@ import 'home_screen.dart';
 import 'jastip_screen.dart';
 import 'passport_screen.dart';
 import 'profile_screen.dart';
-import 'login_screen.dart';
 import 'admin_panel_screen.dart';
 
 class MainNavigation extends StatefulWidget {
@@ -15,7 +14,7 @@ class MainNavigation extends StatefulWidget {
 
   @override
   State<MainNavigation> createState() => _MainNavigationState();
-}
+} 
 
 class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
@@ -150,7 +149,9 @@ class _MainNavigationState extends State<MainNavigation> {
               content: Text(lockMessage ?? 'Fitur terkunci'),
               action: SnackBarAction(
                 label: 'Sewa Dulu',
-                onPressed: () {},
+                onPressed: () {
+                  setState(() => _currentIndex = 0);
+                },
               ),
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

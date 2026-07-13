@@ -1,9 +1,10 @@
 import 'dart:math';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../utils/app_theme.dart';
-
+ 
 /// Result returned when liveness check completes
 class LivenessResult {
   final Uint8List? ktpBytes;
@@ -77,11 +78,67 @@ class _LivenessScreenState extends State<LivenessScreen>
       preferredCameraDevice: CameraDevice.rear,
     );
     if (picked == null) return;
-    final bytes = await picked.readAsBytes();
+    final rawBytes = await picked.readAsBytes();
+    final watermarked = await _applyKtpWatermark(rawBytes);
     setState(() {
-      _ktpBytes = bytes;
+      _ktpBytes = watermarked;
       _step = 1;
     });
+  }
+
+  /// Stamps "KOSTRAKTOR - UNTUK VERIFIKASI SAJA" + timestamp watermark on the KTP image.
+  Future<Uint8List> _applyKtpWatermark(Uint8List bytes) async {
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    final src = frame.image;
+
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    final paint = Paint();
+
+    // Draw original image
+    canvas.drawImage(src, Offset.zero, paint);
+
+    final w = src.width.toDouble();
+    final h = src.height.toDouble();
+
+    final textPainter = TextPainter(
+      textDirection: TextDirection.ltr,
+    );
+
+    // Draw watermark text across the image
+    final now = DateTime.now();
+    final timestamp =
+        '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+
+    final lines = ['KOSTRAKTOR', 'UNTUK VERIFIKASI SAJA', timestamp];
+
+    // Background strip at bottom
+    canvas.drawRect(
+      Rect.fromLTWH(0, h * 0.80, w, h * 0.20),
+      Paint()..color = const Color(0xCC000000),
+    );
+
+    double yOffset = h * 0.82;
+    for (final line in lines) {
+      textPainter.text = TextSpan(
+        text: line,
+        style: TextStyle(
+          color: Colors.white.withOpacity(0.85),
+          fontSize: w * 0.05,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.2,
+        ),
+      );
+      textPainter.layout(maxWidth: w);
+      textPainter.paint(canvas, Offset((w - textPainter.width) / 2, yOffset));
+      yOffset += textPainter.height + w * 0.008;
+    }
+
+    final picture = recorder.endRecording();
+    final img = await picture.toImage(src.width, src.height);
+    final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+    return byteData!.buffer.asUint8List();
   }
 
   Future<void> _takeSelfie() async {

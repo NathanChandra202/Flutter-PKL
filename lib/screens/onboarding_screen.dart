@@ -150,30 +150,30 @@ class OnboardingScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 14),
 
-                      // Login link
-                      Center(
-                        child: GestureDetector(
-                          onTap: () {
+                      // Secondary CTA — Masuk Akun button
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: const BorderSide(color: Colors.white54, width: 1.5),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          onPressed: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(builder: (_) => const LoginScreen()),
                             );
                           },
-                          child: RichText(
-                            text: const TextSpan(
-                              style: TextStyle(color: Colors.white60, fontSize: 14),
-                              children: [
-                                TextSpan(text: 'Sudah punya akun? '),
-                                TextSpan(
-                                  text: 'Masuk di sini',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    decoration: TextDecoration.underline,
-                                    decorationColor: Colors.white,
-                                  ),
-                                ),
-                              ],
+                          child: const Text(
+                            'Masuk Akun',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              letterSpacing: 0.3,
                             ),
                           ),
                         ),

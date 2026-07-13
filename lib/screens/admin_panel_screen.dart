@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../utils/app_theme.dart';
@@ -390,9 +391,23 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
-            Divider(color: Colors.white12),
             const SizedBox(height: 16),
+            Divider(color: Colors.white12),
+            const SizedBox(height: 12),
+
+            // KTP + Selfie split view
+            const Text('Dokumen Identitas', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 13)),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(child: _buildDocPreview('Foto KTP', booking.ktpBytes, Icons.credit_card, Colors.blue)),
+                const SizedBox(width: 10),
+                Expanded(child: _buildDocPreview('Selfie Liveness', booking.selfieBytes, Icons.face_retouching_natural, Colors.purple)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Divider(color: Colors.white12),
+            const SizedBox(height: 12),
 
             // Data Pemohon
             const Text('Data Pemohon', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 13)),
@@ -402,6 +417,40 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             _adminInfoRow('NIK', booking.nik),
             _adminInfoRow('Unit Dipesan', booking.roomType),
             _adminInfoRow('Tanggal Booking', bookingDateStr),
+            const SizedBox(height: 4),
+            // Referensi Transaksi badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.amber.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber.withOpacity(0.4)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.receipt_long_outlined, color: Colors.amber.shade400, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Referensi Transaksi', style: TextStyle(color: Colors.amber.shade300, fontSize: 10, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 2),
+                        Text(booking.referensiTransaksi, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Divider(color: Colors.white12),
+            const SizedBox(height: 12),
+
+            // Bukti Bayar
+            const Text('Bukti Pembayaran', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 13)),
+            const SizedBox(height: 10),
+            _buildDocPreview('Bukti Bayar', booking.buktiBayarBytes, Icons.receipt_outlined, Colors.green),
             const SizedBox(height: 16),
             Divider(color: Colors.white12),
             const SizedBox(height: 16),
@@ -467,6 +516,40 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildDocPreview(String label, Uint8List? bytes, IconData icon, MaterialColor color) {
+    return Container(
+      height: 110,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.shade700.withOpacity(0.4)),
+        color: color.shade900.withOpacity(0.15),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(9),
+        child: bytes != null
+            ? Stack(fit: StackFit.expand, children: [
+                Image.memory(bytes, fit: BoxFit.cover),
+                Positioned(
+                  bottom: 0, left: 0, right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 5),
+                    color: Colors.black54,
+                    child: Text(label, textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ])
+            : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(icon, color: color.shade600, size: 28),
+                const SizedBox(height: 6),
+                Text(label, style: TextStyle(color: color.shade400, fontSize: 10, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 2),
+                Text('Tidak tersedia', style: TextStyle(color: Colors.white30, fontSize: 9)),
+              ]),
       ),
     );
   }

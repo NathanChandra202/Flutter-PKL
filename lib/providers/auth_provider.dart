@@ -15,6 +15,10 @@ class BookingData {
   final String roomType;
   final DateTime bookingTime;
   bool waConfirmed; // user has sent WA to penjaga kos
+  final String referensiTransaksi; // auto-generated reference number
+  final Uint8List? ktpBytes;
+  final Uint8List? selfieBytes;
+  final Uint8List? buktiBayarBytes;
 
   BookingData({
     required this.nama,
@@ -23,7 +27,18 @@ class BookingData {
     required this.roomType,
     required this.bookingTime,
     this.waConfirmed = false,
-  });
+    String? referensiTransaksi,
+    this.ktpBytes,
+    this.selfieBytes,
+    this.buktiBayarBytes,
+  }) : referensiTransaksi = referensiTransaksi ?? _generateRef();
+
+  static String _generateRef() {
+    final now = DateTime.now();
+    final ymd = '${now.year}${now.month.toString().padLeft(2,'0')}${now.day.toString().padLeft(2,'0')}';
+    final rand = (now.millisecondsSinceEpoch % 10000).toString().padLeft(4, '0');
+    return 'KST-$ymd-$rand';
+  }
 }
 
 class PendingUser {
@@ -115,8 +130,8 @@ class AuthProvider extends ChangeNotifier {
     if (_registeredUsers.containsKey(trimmedEmail)) {
       return 'Email sudah terdaftar. Silakan masuk.';
     }
-    if (nama.trim().isEmpty || phone.trim().isEmpty || password.length < 6) {
-      return 'Pastikan semua data diisi dengan benar dan password minimal 6 karakter.';
+    if (nama.trim().isEmpty || phone.trim().isEmpty || password.length < 8) {
+      return 'Pastikan semua data diisi dengan benar dan password minimal 8 karakter kombinasi huruf dan angka.';
     }
 
     // Register the new user

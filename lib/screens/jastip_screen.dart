@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../utils/app_theme.dart';
 import 'tool_share_screen.dart'; 
 
@@ -49,13 +50,17 @@ class JastipScreen extends StatelessWidget {
                   'Jastip Warmindo jam 10 malam',
                   'Mumpung hujan, ongkir hanya Rp 2.000, slot terbatas 3 orang saja',
                   'Kamar 105',
+                  'Rp 2.000',
+                  '6281234500105',
                 ),
                 const SizedBox(height: 16),
                 _buildJastipCard(
                   context,
                   'Jasa Pembersihan & Cuci Sneakers',
-                  'Premium deep clean Rp 15.000 saja selesai 1 hari',
+                  'Premium deep clean selesai 1 hari',
                   'Kamar 202',
+                  'Rp 15.000',
+                  '6281234500202',
                 ),
               ],
             ),
@@ -100,7 +105,7 @@ class JastipScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildJastipCard(BuildContext context, String title, String desc, String author) {
+  Widget _buildJastipCard(BuildContext context, String title, String desc, String author, String harga, String waNumber) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -132,31 +137,61 @@ class JastipScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppTheme.accentGold.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(Icons.chat_bubble_outline, size: 14, color: AppTheme.primaryBlack),
-                    SizedBox(width: 4),
-                    Text('Chat WA',
-                        style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.primaryBlack)),
-                  ],
+              GestureDetector(
+                onTap: () async {
+                  final msg = Uri.encodeComponent('Halo, saya tertarik dengan jastip "$title" yang kamu tawarkan. Apakah masih tersedia?');
+                  final url = Uri.parse('https://wa.me/$waNumber?text=$msg');
+                  if (await canLaunchUrl(url)) {
+                    await launchUrl(url, mode: LaunchMode.externalApplication);
+                  } else {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Tidak dapat membuka WhatsApp.')),
+                      );
+                    }
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF25D366).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFF25D366).withOpacity(0.4)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.chat_bubble_outline, size: 14, color: Color(0xFF1A8A4A)),
+                      SizedBox(width: 4),
+                      Text('Chat WA',
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1A8A4A))),
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Text(title, style: const TextStyle(color: AppTheme.primaryBlack, fontSize: 15, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(desc, style: const TextStyle(color: AppTheme.textMuted, fontSize: 13, height: 1.5)),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppTheme.accentGold.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: AppTheme.accentGold.withOpacity(0.4)),
+            ),
+            child: Text(harga,
+                style: const TextStyle(
+                    color: AppTheme.primaryBlack,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold)),
+          ),
         ],
       ),
     );
