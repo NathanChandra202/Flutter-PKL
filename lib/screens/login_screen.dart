@@ -240,7 +240,62 @@ class _LoginFormState extends State<_LoginForm> {
               onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    title: const Text('Lupa Kata Sandi', style: TextStyle(fontWeight: FontWeight.bold)),
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Masukkan email akun kamu. Kami akan simulasikan pengiriman link reset kata sandi.'),
+                        const SizedBox(height: 16),
+                        TextField(
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: InputDecoration(
+                            hintText: 'Email aktif kamu',
+                            hintStyle: const TextStyle(color: AppTheme.textMuted),
+                            prefixIcon: const Icon(Icons.mail_outline, color: AppTheme.textMuted, size: 20),
+                            filled: true,
+                            fillColor: Colors.grey.shade50,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
+                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppTheme.primaryBlack)),
+                          ),
+                        ),
+                      ],
+                    ),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal', style: TextStyle(color: AppTheme.textMuted))),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryBlack, foregroundColor: Colors.white, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text('Link reset kata sandi telah dikirim ke email kamu.'),
+                              backgroundColor: Colors.green.shade700,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          );
+                        },
+                        child: const Text('Kirim Link Reset'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              child: const Text('Lupa Kata Sandi?', style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+            ),
+          ),
+          const SizedBox(height: 16),
 
           SizedBox(
             width: double.infinity,
@@ -298,7 +353,36 @@ class _RegisterFormState extends State<_RegisterForm> {
   bool _isLoading = false;
 
   void _handleRegister() {
-    if (_passwordController.text != _confirmPasswordController.text) {
+    final nama = _namaController.text.trim();
+    final password = _passwordController.text;
+    final confirm = _confirmPasswordController.text;
+
+    // Validasi nama: minimal 3 kata, hanya huruf dan spasi
+    final namaWords = nama.split(' ').where((w) => w.isNotEmpty).toList();
+    if (namaWords.length < 3) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nama lengkap minimal 3 kata.'), backgroundColor: Colors.redAccent),
+      );
+      return;
+    }
+    if (!RegExp(r'^[a-zA-Z\s]+$').hasMatch(nama)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nama hanya boleh mengandung huruf.'), backgroundColor: Colors.redAccent),
+      );
+      return;
+    }
+
+    // Validasi password min 8 karakter + huruf & angka
+    final hasLetter = RegExp(r'[a-zA-Z]').hasMatch(password);
+    final hasDigit = RegExp(r'[0-9]').hasMatch(password);
+    if (password.length < 8 || !hasLetter || !hasDigit) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password minimal 8 karakter, kombinasi huruf dan angka.'), backgroundColor: Colors.redAccent),
+      );
+      return;
+    }
+
+    if (password != confirm) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Konfirmasi password tidak cocok.'), backgroundColor: Colors.redAccent),
       );
@@ -316,12 +400,64 @@ class _RegisterFormState extends State<_RegisterForm> {
     setState(() => _isLoading = false);
 
     if (error == null) {
-      // Registered & logged in — go to main navigation
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const MainNavigation()),
-        (route) => false,
-      );
+      // Show email confirmation simulation dialog
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 64, height: 64,
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.green.shade200, width: 2),
+                  ),
+                  child: Icon(Icons.mark_email_read_outlined, color: Colors.green.shade600, size: 32),
+                ),
+                const SizedBox(height: 16),
+                const Text('Cek Email Konfirmasi!',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 8),
+                Text(
+                  'Link konfirmasi telah dikirim ke\n${_emailController.text.trim()}\n\nSilakan cek inbox (atau folder spam) untuk mengaktifkan akun Anda.',
+                  style: const TextStyle(color: AppTheme.textMuted, fontSize: 13, height: 1.5),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+            actions: [
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryBlack,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (_) => const MainNavigation()),
+                      (route) => false,
+                    );
+                  },
+                  child: const Text('Lanjutkan ke Aplikasi', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(error), backgroundColor: Colors.redAccent),
@@ -370,7 +506,7 @@ class _RegisterFormState extends State<_RegisterForm> {
           const SizedBox(height: 14),
           _InputField(
             controller: _passwordController,
-            hintText: 'Kata Sandi (min. 6 karakter)',
+            hintText: 'Kata Sandi (min. 8 karakter, huruf & angka)',
             prefixIcon: Icons.lock_outline,
             obscureText: _obscurePassword,
             suffixIcon: IconButton(

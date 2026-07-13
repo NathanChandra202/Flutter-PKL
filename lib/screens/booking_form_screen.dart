@@ -57,14 +57,25 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
   }
 
   void _handleSubmit() {
-    if (_namaController.text.trim().isEmpty ||
-        _phoneController.text.trim().isEmpty ||
-        _nikController.text.trim().isEmpty) {
+    final nama = _namaController.text.trim();
+    final phone = _phoneController.text.trim();
+    final nik = _nikController.text.trim();
+
+    if (nama.isEmpty || phone.isEmpty || nik.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Harap lengkapi semua data diri.'),
-          backgroundColor: Colors.redAccent,
-        ),
+        const SnackBar(content: Text('Harap lengkapi semua data diri.'), backgroundColor: Colors.redAccent),
+      );
+      return;
+    }
+    if (phone.length < 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nomor HP minimal 10 digit.'), backgroundColor: Colors.redAccent),
+      );
+      return;
+    }
+    if (nik.length != 16) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nomor KTP harus tepat 16 digit.'), backgroundColor: Colors.redAccent),
       );
       return;
     }
@@ -90,11 +101,13 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
 
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final booking = BookingData(
-      nama: _namaController.text.trim(),
+      nama: _namaController.text.trim().toUpperCase(),
       phone: _phoneController.text.trim(),
       nik: _nikController.text.trim(),
       roomType: widget.unitData?['title'] ?? 'Tipe Standard',
       bookingTime: DateTime.now(),
+      ktpBytes: _ktpBytes,
+      selfieBytes: _selfieBytes,
     );
 
     auth.submitBooking(booking);
@@ -227,15 +240,16 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
                   const Text('Sesuai dengan KTP/Identitas resmi',
                       style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
                   const SizedBox(height: 20),
-                  _buildInput(_namaController, Icons.person_outline, 'Nama Lengkap'),
+                  _buildInput(_namaController, Icons.person_outline, 'Nama Lengkap (Sesuai KTP)',
+                      textCapitalization: TextCapitalization.characters),
                   const SizedBox(height: 16),
                   _buildInput(_phoneController, Icons.phone_outlined,
-                      'Nomor HP (WhatsApp aktif)',
+                      'Nomor HP (min. 10 digit)',
                       isPhone: true),
                   const SizedBox(height: 16),
                   _buildInput(_nikController, Icons.credit_card_outlined,
-                      'Nomor Induk Kependudukan (NIK)',
-                      isNumber: true),
+                      'NIK (16 digit angka)',
+                      isNumber: true, maxLength: 16),
                 ],
               ),
             ),
@@ -461,28 +475,39 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
   }
 
   Widget _buildInput(TextEditingController ctrl, IconData icon, String hint,
-      {bool isPhone = false, bool isNumber = false}) {
+      {bool isPhone = false, bool isNumber = false,
+       TextCapitalization textCapitalization = TextCapitalization.none,
+       int? maxLength}) {
     return TextField(
       controller: ctrl,
       keyboardType: isPhone
           ? TextInputType.phone
           : (isNumber ? TextInputType.number : TextInputType.text),
+      textCapitalization: textCapitalization,
+      maxLength: maxLength,
+      buildCounter: maxLength != null
+          ? (context, {required currentLength, required isFocused, maxLength}) =>
+              Text('$currentLength / $maxLength',
+                  style: TextStyle(
+                      color: currentLength == maxLength
+                          ? Colors.green.shade700
+                          : AppTheme.textMuted,
+                      fontSize: 11))
+          : null,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 14),
         prefixIcon: Icon(icon, color: AppTheme.textMuted, size: 20),
         filled: true,
         fillColor: Colors.grey.shade50,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: Colors.grey.shade300),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:
-              const BorderSide(color: AppTheme.primaryBlack, width: 2),
+          borderSide: const BorderSide(color: AppTheme.primaryBlack, width: 2),
         ),
       ),
     );

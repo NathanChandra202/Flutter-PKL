@@ -122,23 +122,12 @@ class ProfileScreen extends StatelessWidget {
             // Menu Items (only show relevant ones)
             if (auth.isResident) ...[
               _menuTile(Icons.receipt_long, 'Riwayat Pembayaran', () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('Fitur riwayat pembayaran akan segera hadir.'),
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                );
+                _showRiwayatSheet(context, auth);
               }),
               const SizedBox(height: 12),
               _menuTile(Icons.build_circle_outlined, 'Status Pengaduan', () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('Lihat status pengaduan di tab Lapor.'),
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                );
+                // Navigasi ke tab Lapor (index 2) di MainNavigation
+                Navigator.of(context).popUntil((route) => route.isFirst);
               },
                   trailing: _statusBadge('Processing', Colors.amber)),
               const SizedBox(height: 12),
@@ -161,7 +150,53 @@ class ProfileScreen extends StatelessWidget {
               }),
               const SizedBox(height: 12),
             ] else if (auth.isPendingResident) ...[
-              _menuTile(Icons.pending_actions, 'Status Pembayaran', () {},
+              _menuTile(Icons.pending_actions, 'Status Pembayaran', () {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    title: const Text('Status Pembayaran', style: TextStyle(fontWeight: FontWeight.bold)),
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _dialogInfoRow('Unit', auth.bookingData?.roomType ?? '-'),
+                        const SizedBox(height: 8),
+                        _dialogInfoRow('Tanggal Booking', auth.bookingData != null
+                            ? '${auth.bookingData!.bookingTime.day}/${auth.bookingData!.bookingTime.month}/${auth.bookingData!.bookingTime.year}'
+                            : '-'),
+                        const SizedBox(height: 8),
+                        _dialogInfoRow('Status', 'Menunggu konfirmasi admin'),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.orange.shade200),
+                          ),
+                          child: Text(
+                            'Admin sedang memverifikasi pembayaran kamu. Proses biasanya selesai dalam 1x24 jam.',
+                            style: TextStyle(color: Colors.orange.shade800, fontSize: 12, height: 1.4),
+                          ),
+                        ),
+                      ],
+                    ),
+                    actions: [
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryBlack,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('Oke'),
+                      ),
+                    ],
+                  ),
+                );
+              },
                   trailing: _statusBadge('Menunggu Konfirmasi', Colors.orange)),
               const SizedBox(height: 12),
               _menuTile(Icons.chat, 'Chat Penjaga Kos via WA', () async {
@@ -190,13 +225,7 @@ class ProfileScreen extends StatelessWidget {
             ],
             
             _menuTile(Icons.settings_outlined, 'Pengaturan Akun', () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Pengaturan akun akan segera hadir.'),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-              );
+              _showPengaturanSheet(context, auth);
             }),
             const SizedBox(height: 12),
             // Tombol simulasi admin untuk demo interview
@@ -260,6 +289,181 @@ class ProfileScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _showRiwayatSheet(BuildContext context, AuthProvider auth) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text('Riwayat Pembayaran', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.primaryBlack)),
+            const SizedBox(height: 16),
+            if (auth.bookingData != null)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.green.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.green.shade600, size: 18),
+                        const SizedBox(width: 8),
+                        Text('Pembayaran Diterima', style: TextStyle(color: Colors.green.shade700, fontWeight: FontWeight.bold, fontSize: 13)),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    _dialogInfoRow('Unit', auth.bookingData!.roomType),
+                    const SizedBox(height: 4),
+                    _dialogInfoRow('Tanggal', '${auth.bookingData!.bookingTime.day}/${auth.bookingData!.bookingTime.month}/${auth.bookingData!.bookingTime.year}'),
+                    if (auth.assignedRoom != null) ...[
+                      const SizedBox(height: 4),
+                      _dialogInfoRow('Kamar', auth.assignedRoom!),
+                    ],
+                    const SizedBox(height: 4),
+                    _dialogInfoRow('Status', auth.isResident ? 'Lunas & Aktif' : 'Menunggu Konfirmasi'),
+                  ],
+                ),
+              )
+            else
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Column(
+                    children: [
+                      Icon(Icons.receipt_long_outlined, size: 40, color: Colors.grey.shade300),
+                      const SizedBox(height: 8),
+                      const Text('Belum ada riwayat pembayaran', style: TextStyle(color: AppTheme.textMuted, fontSize: 13)),
+                    ],
+                  ),
+                ),
+              ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showPengaturanSheet(BuildContext context, AuthProvider auth) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text('Pengaturan Akun', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.primaryBlack)),
+              const SizedBox(height: 16),
+              _settingTile(Icons.person_outline, 'Nama', auth.userName ?? '-'),
+              const SizedBox(height: 10),
+              _settingTile(Icons.mail_outline, 'Email', auth.userEmail ?? '-'),
+              const SizedBox(height: 10),
+              _settingTile(Icons.phone_outlined, 'Nomor HP', auth.userPhone ?? '-'),
+              const SizedBox(height: 10),
+              _settingTile(Icons.badge_outlined, 'Status Akun', _roleLabel(auth.currentRole)),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue.shade600, size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text('Untuk mengubah data akun, hubungi manajemen Kostraktor.',
+                          style: TextStyle(color: Colors.blue.shade800, fontSize: 11, height: 1.4)),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _settingTile(IconData icon, String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: AppTheme.textMuted),
+          const SizedBox(width: 12),
+          Text('$label  ', style: const TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+          Expanded(child: Text(value, style: const TextStyle(color: AppTheme.primaryBlack, fontSize: 13, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
+        ],
+      ),
+    );
+  }
+
+  Widget _dialogInfoRow(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(width: 90, child: Text(label, style: const TextStyle(color: AppTheme.textMuted, fontSize: 12))),
+        Expanded(child: Text(value, style: const TextStyle(color: AppTheme.primaryBlack, fontSize: 12, fontWeight: FontWeight.w600))),
+      ],
+    );
+  }
+
+  String _roleLabel(UserRole role) {
+    switch (role) {
+      case UserRole.resident: return 'Penghuni Aktif';
+      case UserRole.pendingResident: return 'Menunggu Konfirmasi';
+      case UserRole.admin: return 'Admin';
+      default: return 'Calon Penghuni';
+    }
   }
 
   Widget _buildGuestView(BuildContext context) {
@@ -371,7 +575,8 @@ class ProfileScreen extends StatelessWidget {
     Color color;
     switch (role) {
       case UserRole.resident:
-        label = 'Penghuni Aktif';
+        // Use auth context to get room number for the label
+        label = 'PENGHUNI AKTIF';
         color = Colors.green;
         break;
       case UserRole.pendingResident:
@@ -386,14 +591,31 @@ class ProfileScreen extends StatelessWidget {
         label = 'Calon Penghuni';
         color = Colors.grey;
     }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        border: Border.all(color: color.withOpacity(0.4)),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(label, style: TextStyle(color: (color as MaterialColor).shade700, fontSize: 10, fontWeight: FontWeight.bold)),
+    return Consumer<AuthProvider>(
+      builder: (context, auth, _) {
+        final displayLabel = (role == UserRole.resident && auth.assignedRoom != null)
+            ? 'ACTIVE RESIDENT - ${auth.assignedRoom!.toUpperCase()}'
+            : label;
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            border: Border.all(color: color.withOpacity(0.4)),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(displayLabel,
+              style: TextStyle(
+                  color: color == Colors.green
+                      ? Colors.green.shade700
+                      : color == Colors.orange
+                          ? Colors.orange.shade700
+                          : color == Colors.blue
+                              ? Colors.blue.shade700
+                              : Colors.grey.shade700,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold)),
+        );
+      },
     );
   }
 

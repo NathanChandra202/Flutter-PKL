@@ -3,16 +3,22 @@ import 'package:flutter/services.dart';
 import '../utils/app_theme.dart';
 import 'detail_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
-  static const List<Map<String, dynamic>> _units = [
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  static const List<Map<String, dynamic>> _allUnits = [
     {
       'title': 'Tipe Standard',
       'price': 'Rp 800.000',
       'image': 'https://tesmohamadasep.sirv.com/duaenam-grp-source/assets/kostraktor/kamar1.png',
       'features': ['1 Kamar Tidur', '1 Kamar Mandi', 'WiFi', 'AC'],
       'location': 'Pasar Rebo, Jakarta Timur',
+      'type': 'Standard',
     },
     {
       'title': 'Tipe Deluxe',
@@ -20,6 +26,7 @@ class HomeScreen extends StatelessWidget {
       'image': 'https://tesmohamadasep.sirv.com/duaenam-grp-source/assets/kostraktor/kamar1.png',
       'features': ['2 Kamar Tidur', '1 Kamar Mandi', 'WiFi', 'AC'],
       'location': 'Pasar Rebo, Jakarta Timur',
+      'type': 'Deluxe',
     },
     {
       'title': 'Tipe Premium',
@@ -27,19 +34,45 @@ class HomeScreen extends StatelessWidget {
       'image': 'https://tesmohamadasep.sirv.com/duaenam-grp-source/assets/kostraktor/kamar1.png',
       'features': ['3 Kamar Tidur', '2 Kamar Mandi', 'WiFi', 'AC'],
       'location': 'Pasar Rebo, Jakarta Timur',
+      'type': 'Premium',
     },
   ];
+
+  String _activeFilter = 'Semua';
+  String _searchQuery = '';
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<Map<String, dynamic>> get _filteredUnits {
+    return _allUnits.where((unit) {
+      final matchFilter = _activeFilter == 'Semua' || unit['type'] == _activeFilter;
+      final query = _searchQuery.toLowerCase();
+      final matchSearch = query.isEmpty ||
+          unit['title'].toString().toLowerCase().contains(query) ||
+          unit['type'].toString().toLowerCase().contains(query) ||
+          unit['location'].toString().toLowerCase().contains(query) ||
+          unit['price'].toString().toLowerCase().contains(query);
+      return matchFilter && matchSearch;
+    }).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark);
+    final filtered = _filteredUnits;
+
     return Scaffold(
       backgroundColor: AppTheme.bgWhite,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ─── App Bar ───
+            // App Bar
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(
@@ -69,7 +102,7 @@ class HomeScreen extends StatelessWidget {
                   Container(
                     width: 40,
                     height: 40,
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: AppTheme.primaryBlack,
                       shape: BoxShape.circle,
                     ),
@@ -79,98 +112,167 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
 
-            // ─── Search bar ───
+            // Search bar — aktif
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-              child: Container(
-                height: 50,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Row(
-                  children: [
-                    SizedBox(width: 16),
-                    Icon(Icons.search, color: AppTheme.textMuted, size: 20),
-                    SizedBox(width: 10),
-                    Text('Cari kamar, tipe, lokasi...', style: TextStyle(color: AppTheme.textMuted, fontSize: 14)),
-                  ],
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (val) => setState(() => _searchQuery = val),
+                style: const TextStyle(color: AppTheme.primaryBlack, fontSize: 14),
+                decoration: InputDecoration(
+                  hintText: 'Cari kamar, tipe, lokasi...',
+                  hintStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 14),
+                  prefixIcon: const Icon(Icons.search, color: AppTheme.textMuted, size: 20),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? GestureDetector(
+                          onTap: () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                          },
+                          child: const Icon(Icons.close, color: AppTheme.textMuted, size: 18),
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: Colors.grey.shade100,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: AppTheme.primaryBlack, width: 1.5),
+                  ),
                 ),
               ),
             ),
 
-            // ─── Filter chips ───
+            // Filter chips — aktif
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 0, 16),
+              padding: const EdgeInsets.fromLTRB(20, 14, 0, 14),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
-                  children: [
-                    _FilterChip(label: 'Semua', active: true),
-                    _FilterChip(label: 'Standard'),
-                    _FilterChip(label: 'Deluxe'),
-                    _FilterChip(label: 'Premium'),
-                  ],
+                  children: ['Semua', 'Standard', 'Deluxe', 'Premium'].map((label) {
+                    final isActive = _activeFilter == label;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: GestureDetector(
+                        onTap: () => setState(() => _activeFilter = label),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+                          decoration: BoxDecoration(
+                            color: isActive ? AppTheme.primaryBlack : Colors.white,
+                            border: Border.all(
+                                color: isActive ? AppTheme.primaryBlack : Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(100),
+                          ),
+                          child: Text(
+                            label,
+                            style: TextStyle(
+                              color: isActive ? Colors.white : AppTheme.textMuted,
+                              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
                 ),
               ),
             ),
 
-            // ─── Section Header ───
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
+            // Section header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Flexible(child: Text('Unit Tersedia', style: TextStyle(color: AppTheme.primaryBlack, fontSize: 17, fontWeight: FontWeight.bold))),
-                  Text('100+ kamar', style: TextStyle(color: AppTheme.textMuted, fontSize: 13)),
+                  Flexible(
+                    child: Text(
+                      _searchQuery.isNotEmpty
+                          ? 'Hasil pencarian "${_searchQuery}"'
+                          : _activeFilter == 'Semua'
+                              ? 'Unit Tersedia'
+                              : 'Tipe $_activeFilter',
+                      style: const TextStyle(
+                          color: AppTheme.primaryBlack,
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Text(
+                    '${filtered.length} unit',
+                    style: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                  ),
                 ],
               ),
             ),
 
-            // ─── Grid ───
+            // Grid
             Expanded(
-              child: GridView.builder(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 14,
-                  crossAxisSpacing: 14,
-                  childAspectRatio: 0.72,
-                ),
-                itemCount: _units.length,
-                itemBuilder: (context, i) => _UnitCard(unit: _units[i]),
-              ),
+              child: filtered.isEmpty
+                  ? _buildEmptyState()
+                  : GridView.builder(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 14,
+                        crossAxisSpacing: 14,
+                        childAspectRatio: 0.72,
+                      ),
+                      itemCount: filtered.length,
+                      itemBuilder: (context, i) => _UnitCard(unit: filtered[i]),
+                    ),
             ),
           ],
         ),
       ),
     );
   }
-}
 
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool active;
-  const _FilterChip({required this.label, this.active = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
-        decoration: BoxDecoration(
-          color: active ? AppTheme.primaryBlack : Colors.white,
-          border: Border.all(color: active ? AppTheme.primaryBlack : Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(100),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: active ? Colors.white : AppTheme.textMuted,
-            fontWeight: active ? FontWeight.bold : FontWeight.normal,
-            fontSize: 13,
-          ),
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search_off_rounded, size: 56, color: Colors.grey.shade300),
+            const SizedBox(height: 16),
+            Text(
+              'Tidak ada unit yang cocok',
+              style: TextStyle(
+                  color: AppTheme.primaryBlack,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Coba kata kunci lain atau reset filter.',
+              style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppTheme.primaryBlack),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+              ),
+              onPressed: () {
+                _searchController.clear();
+                setState(() {
+                  _searchQuery = '';
+                  _activeFilter = 'Semua';
+                });
+              },
+              child: const Text('Reset Pencarian',
+                  style: TextStyle(color: AppTheme.primaryBlack, fontWeight: FontWeight.bold)),
+            ),
+          ],
         ),
       ),
     );
@@ -204,7 +306,6 @@ class _UnitCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Image
             Expanded(
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
@@ -219,18 +320,18 @@ class _UnitCard extends StatelessWidget {
                         child: const Icon(Icons.apartment, size: 48, color: Colors.grey),
                       ),
                     ),
-                    // Gradient overlay
                     Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
+                      bottom: 0, left: 0, right: 0,
                       child: Container(
                         height: 50,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
-                            colors: [Colors.transparent, Colors.black.withOpacity(0.3)],
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withOpacity(0.3)
+                            ],
                           ),
                         ),
                       ),
@@ -239,8 +340,6 @@ class _UnitCard extends StatelessWidget {
                 ),
               ),
             ),
-
-            // Details
             Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
