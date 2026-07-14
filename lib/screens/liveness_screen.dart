@@ -191,7 +191,7 @@ class _LivenessScreenState extends State<LivenessScreen>
         title: const Text(
           'Verifikasi Identitas',
           style: TextStyle(color: AppTheme.primaryBlack, fontWeight: FontWeight.bold),
-        ),
+        ), 
         centerTitle: true,
         iconTheme: const IconThemeData(color: AppTheme.primaryBlack),
         bottom: PreferredSize(

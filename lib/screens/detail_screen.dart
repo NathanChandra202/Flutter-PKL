@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import '../utils/app_theme.dart';
 import '../providers/auth_provider.dart';
 import 'booking_form_screen.dart';
@@ -10,15 +12,37 @@ class DetailScreen extends StatelessWidget {
   final Map<String, dynamic>? unitData;
   const DetailScreen({super.key, this.unitData});
 
+  // Fungsi untuk membuka WhatsApp
+  Future<void> _openWhatsApp(BuildContext context) async {
+    const phoneNumber = '6281234567890'; // Ganti dengan nomor admin
+    const message =
+        'Halo Admin Kostraktor, saya ingin bertanya tentang sewa kamar.';
+    final url = Uri.parse(
+      'https://wa.me/$phoneNumber?text=${Uri.encodeComponent(message)}',
+    );
+
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tidak dapat membuka WhatsApp')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
 
-    final title = unitData?['title'] ?? 'Tipe Premium';
+    final title = unitData?['title'] ?? 'Tipe Premium'; 
     final price = unitData?['price'] ?? 'Rp 1.800.000';
-    final imageUrl = unitData?['image'] ??
+    final imageUrl =
+        unitData?['image'] ??
         'https://tesmohamadasep.sirv.com/duaenam-grp-source/assets/kostraktor/kamar1.png';
-    final features = (unitData?['features'] as List<dynamic>?) ??
+    final features =
+        (unitData?['features'] as List<dynamic>?) ??
         ['Kamar Tidur', 'Kamar Mandi', 'WiFi', 'AC'];
 
     return Scaffold(
@@ -39,7 +63,11 @@ class DetailScreen extends StatelessWidget {
                     color: Colors.white,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.arrow_back, color: AppTheme.primaryBlack, size: 20),
+                  child: const Icon(
+                    Icons.arrow_back,
+                    color: AppTheme.primaryBlack,
+                    size: 20,
+                  ),
                 ),
               ),
             ),
@@ -50,7 +78,8 @@ class DetailScreen extends StatelessWidget {
                   Image.network(
                     imageUrl,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(color: Colors.grey.shade200),
+                    errorBuilder: (context, error, stackTrace) =>
+                        Container(color: Colors.grey.shade200),
                   ),
                   // Bottom gradient so title is legible
                   Positioned(
@@ -63,7 +92,10 @@ class DetailScreen extends StatelessWidget {
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [Colors.transparent, Colors.black.withOpacity(0.6)],
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.6),
+                          ],
                         ),
                       ),
                     ),
@@ -99,12 +131,19 @@ class DetailScreen extends StatelessWidget {
                             const SizedBox(height: 6),
                             Row(
                               children: const [
-                                Icon(Icons.location_on, color: AppTheme.accentGold, size: 14),
+                                Icon(
+                                  Icons.location_on,
+                                  color: AppTheme.accentGold,
+                                  size: 14,
+                                ),
                                 SizedBox(width: 4),
                                 Flexible(
                                   child: Text(
                                     'Pasar Rebo, Jakarta Timur',
-                                    style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                                    style: TextStyle(
+                                      color: AppTheme.textMuted,
+                                      fontSize: 13,
+                                    ),
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
@@ -114,11 +153,16 @@ class DetailScreen extends StatelessWidget {
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
-                          color: AppTheme.accentGold.withOpacity(0.12),
+                          color: AppTheme.accentGold.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: AppTheme.accentGold.withOpacity(0.4)),
+                          border: Border.all(
+                            color: AppTheme.accentGold.withValues(alpha: 0.4),
+                          ),
                         ),
                         child: Text(
                           price,
@@ -142,7 +186,11 @@ class DetailScreen extends StatelessWidget {
                   padding: EdgeInsets.fromLTRB(24, 8, 24, 0),
                   child: Text(
                     'Kostraktor menghadirkan hunian kost premium dengan fasilitas lengkap dan kualitas konstruksi terbaik. Setiap kamar dirancang dengan ventilasi silang alami, kedap suara, dan bebas banjir. Cocok untuk mahasiswa dan pekerja muda Jakarta Timur.',
-                    style: TextStyle(color: AppTheme.textMuted, fontSize: 14, height: 1.7),
+                    style: TextStyle(
+                      color: AppTheme.textMuted,
+                      fontSize: 14,
+                      height: 1.7,
+                    ),
                   ),
                 ),
 
@@ -156,7 +204,9 @@ class DetailScreen extends StatelessWidget {
                   child: Wrap(
                     spacing: 10,
                     runSpacing: 10,
-                    children: features.map<Widget>((f) => _FacilityBadge(label: f.toString())).toList(),
+                    children: features
+                        .map<Widget>((f) => _FacilityBadge(label: f.toString()))
+                        .toList(),
                   ),
                 ),
 
@@ -174,13 +224,330 @@ class DetailScreen extends StatelessWidget {
                       ),
                       const SizedBox(width: 12),
                       const Expanded(
-                        child: _PriceBox(label: 'Deposit Awal', value: 'Rp 1.000.000'),
+                        child: _PriceBox(
+                          label: 'Deposit Awal',
+                          value: 'Rp 1.000.000',
+                        ),
                       ),
                     ],
                   ),
                 ),
 
-                const SizedBox(height: 100), // space for FAB
+                const SizedBox(height: 24),
+                const _Divider(),
+
+                // Map Section
+                const _SectionTitle('Lokasi'),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        height: 200,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Stack(
+                            children: [
+                              Container(
+                                color: Colors.grey.shade200,
+                                child: Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.location_on,
+                                        size: 48,
+                                        color: AppTheme.accentGold,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      const Text(
+                                        'Pasar Rebo, Jakarta Timur',
+                                        style: TextStyle(
+                                          color: AppTheme.primaryBlack,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Tap untuk buka di Maps',
+                                        style: TextStyle(
+                                          color: AppTheme.textMuted,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              Positioned.fill(
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: () async {
+                                      const lat = -6.3167;
+                                      const lng = 106.8667;
+                                      final url = Uri.parse(
+                                        'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
+                                      );
+                                      if (await canLaunchUrl(url)) {
+                                        await launchUrl(
+                                          url,
+                                          mode: LaunchMode.externalApplication,
+                                        );
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.location_on,
+                            size: 16,
+                            color: AppTheme.accentGold,
+                          ),
+                          const SizedBox(width: 6),
+                          const Expanded(
+                            child: Text(
+                              'Jl. Raya Bogor, Pasar Rebo, Jakarta Timur',
+                              style: TextStyle(
+                                color: AppTheme.textMuted,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+                const _Divider(),
+
+                // Rating & Reviews Section
+                const _SectionTitle('Rating & Ulasan'),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+                  child: Consumer<AuthProvider>(
+                    builder: (context, auth, child) {
+                      final reviews = auth.reviews;
+                      final avgRating = auth.averageRating;
+                      final distribution = auth.ratingDistribution;
+                      final totalReviews = reviews.length;
+
+                      return Column(
+                        children: [
+                          // Rating Summary
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: Colors.grey.shade200),
+                            ),
+                            child: totalReviews > 0
+                                ? Row(
+                                    children: [
+                                      Column(
+                                        children: [
+                                          Text(
+                                            avgRating.toStringAsFixed(1),
+                                            style: const TextStyle(
+                                              color: AppTheme.primaryBlack,
+                                              fontSize: 40,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          RatingBarIndicator(
+                                            rating: avgRating,
+                                            itemBuilder: (context, index) =>
+                                                const Icon(
+                                                  Icons.star,
+                                                  color: AppTheme.accentGold,
+                                                ),
+                                            itemCount: 5,
+                                            itemSize: 20.0,
+                                            direction: Axis.horizontal,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            '$totalReviews ulasan',
+                                            style: TextStyle(
+                                              color: AppTheme.textMuted,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(width: 24),
+                                      Expanded(
+                                        child: Column(
+                                          children: [
+                                            _RatingBar(
+                                              stars: 5,
+                                              percentage: totalReviews > 0
+                                                  ? distribution[5]! /
+                                                        totalReviews
+                                                  : 0,
+                                            ),
+                                            _RatingBar(
+                                              stars: 4,
+                                              percentage: totalReviews > 0
+                                                  ? distribution[4]! /
+                                                        totalReviews
+                                                  : 0,
+                                            ),
+                                            _RatingBar(
+                                              stars: 3,
+                                              percentage: totalReviews > 0
+                                                  ? distribution[3]! /
+                                                        totalReviews
+                                                  : 0,
+                                            ),
+                                            _RatingBar(
+                                              stars: 2,
+                                              percentage: totalReviews > 0
+                                                  ? distribution[2]! /
+                                                        totalReviews
+                                                  : 0,
+                                            ),
+                                            _RatingBar(
+                                              stars: 1,
+                                              percentage: totalReviews > 0
+                                                  ? distribution[1]! /
+                                                        totalReviews
+                                                  : 0,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                : Center(
+                                    child: Column(
+                                      children: [
+                                        Icon(
+                                          Icons.rate_review_outlined,
+                                          size: 48,
+                                          color: Colors.grey.shade300,
+                                        ),
+                                        const SizedBox(height: 12),
+                                        const Text(
+                                          'Belum ada ulasan',
+                                          style: TextStyle(
+                                            color: AppTheme.textMuted,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Add Review Button (for residents and pending residents who have paid)
+                          if (auth.isResident ||
+                              (auth.isPendingResident &&
+                                  auth.bookingData?.waConfirmed == true)) ...[
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(
+                                    color: AppTheme.primaryBlack,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                    horizontal: 24,
+                                  ),
+                                ),
+                                onPressed: () => _showReviewDialog(context),
+                                icon: const Icon(
+                                  Icons.rate_review,
+                                  color: AppTheme.primaryBlack,
+                                  size: 18,
+                                ),
+                                label: const Text(
+                                  'Tulis Ulasan',
+                                  style: TextStyle(
+                                    color: AppTheme.primaryBlack,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                          ] else if (auth.isLoggedIn && !auth.isResident) ...[
+                            // Info untuk user yang belum bisa review
+                            Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.blue.shade200),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.info_outline,
+                                    color: Colors.blue.shade700,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      auth.isPendingResident
+                                          ? 'Selesaikan pembayaran untuk bisa memberikan ulasan'
+                                          : 'Sewa kamar terlebih dahulu untuk bisa memberikan ulasan',
+                                      style: TextStyle(
+                                        color: Colors.blue.shade900,
+                                        fontSize: 12,
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+
+                          // Display Reviews
+                          if (reviews.isNotEmpty) ...[
+                            ...reviews.map(
+                              (review) => Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: _ReviewCard(
+                                  name: review.userName,
+                                  rating: review.rating,
+                                  date: _formatReviewDate(review.createdAt),
+                                  comment: review.comment,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      );
+                    },
+                  ),
+                ),
+
+                const SizedBox(height: 120), // space for FAB
               ],
             ),
           ),
@@ -191,34 +558,362 @@ class DetailScreen extends StatelessWidget {
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: SizedBox(
-          width: double.infinity,
-          child: Builder(builder: (ctx) {
-            return ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryBlack,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                elevation: 4,
-                shadowColor: Colors.black38,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Tombol Tanya Admin via WhatsApp
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF25D366), width: 2),
+                  backgroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                onPressed: () => _openWhatsApp(context),
+                icon: const Icon(
+                  Icons.chat_bubble_outline,
+                  color: Color(0xFF25D366),
+                  size: 20,
+                ),
+                label: const Text(
+                  'Tanya Admin via WhatsApp',
+                  style: TextStyle(
+                    color: Color(0xFF25D366),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
               ),
-              onPressed: () {
-                final auth = Provider.of<AuthProvider>(ctx, listen: false);
-                if (!auth.isLoggedIn) {
-                  _showLoginPrompt(ctx);
-                } else {
-                  Navigator.push(ctx, MaterialPageRoute(
-                    builder: (_) => BookingFormScreen(unitData: unitData),
-                  ));
-                }
-              },
-              child: const Text(
-                'Ajukan Sewa Sekarang',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 0.3),
+            ),
+            const SizedBox(height: 10),
+            // Tombol Ajukan Sewa
+            SizedBox(
+              width: double.infinity,
+              child: Builder(
+                builder: (ctx) {
+                  return ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryBlack,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      elevation: 4,
+                      shadowColor: Colors.black38,
+                    ),
+                    onPressed: () {
+                      final auth = Provider.of<AuthProvider>(
+                        ctx,
+                        listen: false,
+                      );
+                      if (!auth.isLoggedIn) {
+                        _showLoginPrompt(ctx);
+                      } else {
+                        Navigator.push(
+                          ctx,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                BookingFormScreen(unitData: unitData),
+                          ),
+                        );
+                      }
+                    },
+                    child: const Text(
+                      'Ajukan Sewa Sekarang',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  );
+                },
               ),
-            );
-          }),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatReviewDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays == 0) {
+      if (difference.inHours == 0) {
+        if (difference.inMinutes == 0) {
+          return 'Baru saja';
+        }
+        return '${difference.inMinutes} menit yang lalu';
+      }
+      return '${difference.inHours} jam yang lalu';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} hari yang lalu';
+    } else {
+      final months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'Mei',
+        'Jun',
+        'Jul',
+        'Ags',
+        'Sep',
+        'Okt',
+        'Nov',
+        'Des',
+      ];
+      return '${date.day} ${months[date.month - 1]} ${date.year}';
+    }
+  }
+
+  void _showReviewDialog(BuildContext context) {
+    double rating = 0;
+    final commentController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 400),
+            padding: const EdgeInsets.all(24),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: const BoxDecoration(
+                          color: AppTheme.primaryBlack,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.rate_review,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Tulis Ulasan',
+                          style: TextStyle(
+                            color: AppTheme.primaryBlack,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Berikan Rating',
+                    style: TextStyle(
+                      color: AppTheme.primaryBlack,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Center(
+                    child: RatingBar.builder(
+                      initialRating: 0,
+                      minRating: 1,
+                      direction: Axis.horizontal,
+                      allowHalfRating: false,
+                      itemCount: 5,
+                      itemSize: 40,
+                      itemBuilder: (context, _) =>
+                          const Icon(Icons.star, color: AppTheme.accentGold),
+                      onRatingUpdate: (newRating) {
+                        setState(() => rating = newRating);
+                      },
+                    ),
+                  ),
+                  if (rating > 0) ...[
+                    const SizedBox(height: 8),
+                    Center(
+                      child: Text(
+                        '${rating.toInt()} bintang',
+                        style: TextStyle(
+                          color: AppTheme.textMuted,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Ceritakan Pengalaman Anda',
+                    style: TextStyle(
+                      color: AppTheme.primaryBlack,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: commentController,
+                    maxLines: 5,
+                    maxLength: 500,
+                    decoration: InputDecoration(
+                      hintText:
+                          'Bagaimana pengalaman Anda tinggal di Kostraktor? Ceritakan tentang fasilitas, kebersihan, keamanan, dll.',
+                      hintStyle: TextStyle(
+                        color: AppTheme.textMuted,
+                        fontSize: 13,
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: AppTheme.primaryBlack,
+                          width: 1.5,
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.all(16),
+                    ),
+                    style: const TextStyle(fontSize: 14, height: 1.5),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: Colors.grey.shade300),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () {
+                            commentController.dispose();
+                            Navigator.pop(context);
+                          },
+                          child: const Text(
+                            'Batal',
+                            style: TextStyle(
+                              color: AppTheme.textMuted,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryBlack,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                          onPressed: () {
+                            if (rating == 0) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Pilih rating terlebih dahulu'),
+                                  backgroundColor: Colors.redAccent,
+                                ),
+                              );
+                              return;
+                            }
+                            final comment = commentController.text.trim();
+                            if (comment.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Tulis komentar terlebih dahulu',
+                                  ),
+                                  backgroundColor: Colors.redAccent,
+                                ),
+                              );
+                              return;
+                            }
+
+                            final auth = Provider.of<AuthProvider>(
+                              context,
+                              listen: false,
+                            );
+                            final error = auth.submitReview(
+                              rating: rating,
+                              comment: comment,
+                            );
+
+                            commentController.dispose();
+                            Navigator.pop(context);
+
+                            if (error != null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(error),
+                                  backgroundColor: Colors.redAccent,
+                                ),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Text(
+                                    'Terima kasih atas ulasan Anda!',
+                                  ),
+                                  backgroundColor: Colors.green.shade700,
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                          child: const Text(
+                            'Kirim Ulasan',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -246,32 +941,44 @@ class DetailScreen extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 40, height: 4,
+                  width: 40,
+                  height: 4,
                   decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(2)),
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
                 const SizedBox(height: 20),
                 Container(
-                  width: 56, height: 56,
+                  width: 56,
+                  height: 56,
                   decoration: const BoxDecoration(
-                      color: AppTheme.primaryBlack, shape: BoxShape.circle),
-                  child: const Icon(Icons.lock_outline,
-                      color: Colors.white, size: 26),
+                    color: AppTheme.primaryBlack,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.lock_outline,
+                    color: Colors.white,
+                    size: 26,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 const Text(
                   'Login Dulu',
                   style: TextStyle(
-                      color: AppTheme.primaryBlack,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold),
+                    color: AppTheme.primaryBlack,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 const Text(
                   'Untuk mengajukan sewa, masuk atau buat akun dulu. Gratis dan cepat!',
                   style: TextStyle(
-                      color: AppTheme.textMuted, fontSize: 13, height: 1.5),
+                    color: AppTheme.textMuted,
+                    fontSize: 13,
+                    height: 1.5,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
@@ -283,27 +990,33 @@ class DetailScreen extends StatelessWidget {
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 15),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       elevation: 0,
                     ),
                     onPressed: () {
                       Navigator.pop(context);
                       Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const LoginScreen()));
+                        context,
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      );
                     },
-                    child: const Text('Masuk / Daftar Akun',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 15)),
+                    child: const Text(
+                      'Masuk / Daftar Akun',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Lanjut Lihat-lihat Dulu',
-                      style:
-                          TextStyle(color: AppTheme.textMuted, fontSize: 13)),
+                  child: const Text(
+                    'Lanjut Lihat-lihat Dulu',
+                    style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                  ),
                 ),
               ],
             ),
@@ -319,8 +1032,12 @@ class DetailScreen extends StatelessWidget {
 class _Divider extends StatelessWidget {
   const _Divider();
   @override
-  Widget build(BuildContext context) =>
-      Divider(color: Colors.grey.shade200, thickness: 1, indent: 24, endIndent: 24);
+  Widget build(BuildContext context) => Divider(
+    color: Colors.grey.shade200,
+    thickness: 1,
+    indent: 24,
+    endIndent: 24,
+  );
 }
 
 class _SectionTitle extends StatelessWidget {
@@ -328,12 +1045,16 @@ class _SectionTitle extends StatelessWidget {
   const _SectionTitle(this.text);
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-        child: Text(
-          text,
-          style: const TextStyle(color: AppTheme.primaryBlack, fontSize: 17, fontWeight: FontWeight.bold),
-        ),
-      );
+    padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+    child: Text(
+      text,
+      style: const TextStyle(
+        color: AppTheme.primaryBlack,
+        fontSize: 17,
+        fontWeight: FontWeight.bold,
+      ),
+    ),
+  );
 }
 
 class _FacilityBadge extends StatelessWidget {
@@ -341,14 +1062,17 @@ class _FacilityBadge extends StatelessWidget {
   const _FacilityBadge({required this.label});
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade50,
-          border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(100),
-        ),
-        child: Text(label, style: const TextStyle(color: AppTheme.primaryBlack, fontSize: 13)),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+    decoration: BoxDecoration(
+      color: Colors.grey.shade50,
+      border: Border.all(color: Colors.grey.shade300),
+      borderRadius: BorderRadius.circular(100),
+    ),
+    child: Text(
+      label,
+      style: const TextStyle(color: AppTheme.primaryBlack, fontSize: 13),
+    ),
+  );
 }
 
 class _PriceBox extends StatelessWidget {
@@ -356,19 +1080,170 @@ class _PriceBox extends StatelessWidget {
   const _PriceBox({required this.label, required this.value});
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade50,
-          border: Border.all(color: Colors.grey.shade200),
-          borderRadius: BorderRadius.circular(14),
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.grey.shade50,
+      border: Border.all(color: Colors.grey.shade200),
+      borderRadius: BorderRadius.circular(14),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: const TextStyle(
+            color: AppTheme.primaryBlack,
+            fontWeight: FontWeight.bold,
+            fontSize: 15,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _RatingBar extends StatelessWidget {
+  final int stars;
+  final double percentage;
+  const _RatingBar({required this.stars, required this.percentage});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 2),
+    child: Row(
+      children: [
+        Text(
+          '$stars',
+          style: const TextStyle(
+            color: AppTheme.textMuted,
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(width: 4),
+        const Icon(Icons.star, color: AppTheme.accentGold, size: 12),
+        const SizedBox(width: 8),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: percentage,
+              backgroundColor: Colors.grey.shade200,
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                AppTheme.accentGold,
+              ),
+              minHeight: 6,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          '${(percentage * 100).toInt()}%',
+          style: const TextStyle(color: AppTheme.textMuted, fontSize: 10),
+        ),
+      ],
+    ),
+  );
+}
+
+class _ReviewCard extends StatelessWidget {
+  final String name;
+  final double rating;
+  final String date;
+  final String comment;
+
+  const _ReviewCard({
+    required this.name,
+    required this.rating,
+    required this.date,
+    required this.comment,
+  });
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: Colors.grey.shade200),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
-            Text(label, style: const TextStyle(color: AppTheme.textMuted, fontSize: 12)),
-            const SizedBox(height: 6),
-            Text(value, style: const TextStyle(color: AppTheme.primaryBlack, fontWeight: FontWeight.bold, fontSize: 15)),
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppTheme.primaryBlack,
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  name[0].toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      color: AppTheme.primaryBlack,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      RatingBarIndicator(
+                        rating: rating,
+                        itemBuilder: (context, index) =>
+                            const Icon(Icons.star, color: AppTheme.accentGold),
+                        itemCount: 5,
+                        itemSize: 12.0,
+                        direction: Axis.horizontal,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        date,
+                        style: TextStyle(
+                          color: AppTheme.textMuted,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
-      );
+        const SizedBox(height: 10),
+        Text(
+          comment,
+          style: const TextStyle(
+            color: AppTheme.textMuted,
+            fontSize: 13,
+            height: 1.5,
+          ),
+        ),
+      ],
+    ),
+  );
 }

@@ -22,7 +22,13 @@ class ProfileScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Profil', style: TextStyle(color: AppTheme.primaryBlack, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Profil',
+          style: TextStyle(
+            color: AppTheme.primaryBlack,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         centerTitle: true,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1.0),
@@ -45,7 +51,13 @@ class ProfileScreen extends StatelessWidget {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.grey.shade200),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: Row(
                 children: [
@@ -58,8 +70,15 @@ class ProfileScreen extends StatelessWidget {
                     ),
                     child: Center(
                       child: Text(
-                        (auth.userName?.isNotEmpty == true ? auth.userName![0] : auth.userEmail![0]).toUpperCase(),
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 28),
+                        (auth.userName?.isNotEmpty == true
+                                ? auth.userName![0]
+                                : auth.userEmail![0])
+                            .toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 28,
+                        ),
                       ),
                     ),
                   ),
@@ -70,13 +89,29 @@ class ProfileScreen extends StatelessWidget {
                       children: [
                         Text(
                           auth.userName ?? 'Pengguna',
-                          style: const TextStyle(color: AppTheme.primaryBlack, fontWeight: FontWeight.bold, fontSize: 18),
+                          style: const TextStyle(
+                            color: AppTheme.primaryBlack,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
                         ),
                         const SizedBox(height: 4),
-                        Text(auth.userEmail ?? '', style: const TextStyle(color: AppTheme.textMuted, fontSize: 13)),
+                        Text(
+                          auth.userEmail ?? '',
+                          style: const TextStyle(
+                            color: AppTheme.textMuted,
+                            fontSize: 13,
+                          ),
+                        ),
                         if (auth.userPhone != null) ...[
                           const SizedBox(height: 2),
-                          Text(auth.userPhone!, style: const TextStyle(color: AppTheme.textMuted, fontSize: 13)),
+                          Text(
+                            auth.userPhone!,
+                            style: const TextStyle(
+                              color: AppTheme.textMuted,
+                              fontSize: 13,
+                            ),
+                          ),
                         ],
                         const SizedBox(height: 8),
                         _buildRoleBadge(auth.currentRole),
@@ -100,18 +135,48 @@ class ProfileScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Info Booking', style: TextStyle(color: AppTheme.primaryBlack, fontWeight: FontWeight.bold, fontSize: 15)),
+                    const Text(
+                      'Info Booking',
+                      style: TextStyle(
+                        color: AppTheme.primaryBlack,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
                     const SizedBox(height: 12),
-                    _infoRow(Icons.apartment_outlined, 'Unit', auth.bookingData!.roomType),
+                    _infoRow(
+                      Icons.apartment_outlined,
+                      'Unit',
+                      auth.bookingData!.roomType,
+                    ),
                     const SizedBox(height: 10),
-                    _infoRow(Icons.location_on_outlined, 'Lokasi', 'Pasar Rebo, Jakarta Timur'),
+                    _infoRow(
+                      Icons.location_on_outlined,
+                      'Lokasi',
+                      'Pasar Rebo, Jakarta Timur',
+                    ),
                     if (auth.assignedRoom != null) ...[
                       const SizedBox(height: 10),
-                      _infoRow(Icons.meeting_room_outlined, 'Kamar', auth.assignedRoom!),
+                      _infoRow(
+                        Icons.meeting_room_outlined,
+                        'Kamar',
+                        auth.assignedRoom!,
+                      ),
                     ],
                     const SizedBox(height: 10),
-                    _infoRow(Icons.calendar_today_outlined, 'Tanggal Booking',
-                        '${auth.bookingData!.bookingTime.day}/${auth.bookingData!.bookingTime.month}/${auth.bookingData!.bookingTime.year}'),
+                    _infoRow(
+                      Icons.calendar_today_outlined,
+                      'Tanggal Booking',
+                      '${auth.bookingData!.bookingTime.day}/${auth.bookingData!.bookingTime.month}/${auth.bookingData!.bookingTime.year}',
+                    ),
+                    if (auth.bookingData!.tanggalMulaiMenghuni != null) ...[
+                      const SizedBox(height: 10),
+                      _infoRow(
+                        Icons.calendar_month,
+                        'Mulai Menghuni',
+                        _formatTanggal(auth.bookingData!.tanggalMulaiMenghuni!),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -125,11 +190,15 @@ class ProfileScreen extends StatelessWidget {
                 _showRiwayatSheet(context, auth);
               }),
               const SizedBox(height: 12),
-              _menuTile(Icons.build_circle_outlined, 'Status Pengaduan', () {
-                // Navigasi ke tab Lapor (index 2) di MainNavigation
-                Navigator.of(context).popUntil((route) => route.isFirst);
-              },
-                  trailing: _statusBadge('Processing', Colors.amber)),
+              _menuTile(
+                Icons.build_circle_outlined,
+                'Status Pengaduan',
+                () {
+                  // Navigasi ke tab Lapor (index 2) di MainNavigation
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                },
+                trailing: _statusBadge('Processing', Colors.amber),
+              ),
               const SizedBox(height: 12),
               _menuTile(Icons.support_agent, 'Hubungi Manajemen', () async {
                 final name = auth.userName ?? 'Penghuni';
@@ -137,80 +206,113 @@ class ProfileScreen extends StatelessWidget {
                 final message = Uri.encodeComponent(
                   'Halo Admin Kostraktor, saya $name ($room) ingin menghubungi manajemen.',
                 );
-                final url = Uri.parse('https://wa.me/6281234567890?text=$message');
+                final url = Uri.parse(
+                  'https://wa.me/6281234567890?text=$message',
+                );
                 if (await canLaunchUrl(url)) {
                   await launchUrl(url, mode: LaunchMode.externalApplication);
                 } else {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Tidak dapat membuka WhatsApp. Hubungi 081234567890')),
+                      const SnackBar(
+                        content: Text(
+                          'Tidak dapat membuka WhatsApp. Hubungi 081234567890',
+                        ),
+                      ),
                     );
                   }
                 }
               }),
               const SizedBox(height: 12),
             ] else if (auth.isPendingResident) ...[
-              _menuTile(Icons.pending_actions, 'Status Pembayaran', () {
-                showDialog(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    title: const Text('Status Pembayaran', style: TextStyle(fontWeight: FontWeight.bold)),
-                    content: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _dialogInfoRow('Unit', auth.bookingData?.roomType ?? '-'),
-                        const SizedBox(height: 8),
-                        _dialogInfoRow('Tanggal Booking', auth.bookingData != null
-                            ? '${auth.bookingData!.bookingTime.day}/${auth.bookingData!.bookingTime.month}/${auth.bookingData!.bookingTime.year}'
-                            : '-'),
-                        const SizedBox(height: 8),
-                        _dialogInfoRow('Status', 'Menunggu konfirmasi admin'),
-                        const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.shade50,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.orange.shade200),
+              _menuTile(
+                Icons.pending_actions,
+                'Status Pembayaran',
+                () {
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      title: const Text(
+                        'Status Pembayaran',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _dialogInfoRow(
+                            'Unit',
+                            auth.bookingData?.roomType ?? '-',
                           ),
-                          child: Text(
-                            'Admin sedang memverifikasi pembayaran kamu. Proses biasanya selesai dalam 1x24 jam.',
-                            style: TextStyle(color: Colors.orange.shade800, fontSize: 12, height: 1.4),
+                          const SizedBox(height: 8),
+                          _dialogInfoRow(
+                            'Tanggal Booking',
+                            auth.bookingData != null
+                                ? '${auth.bookingData!.bookingTime.day}/${auth.bookingData!.bookingTime.month}/${auth.bookingData!.bookingTime.year}'
+                                : '-',
                           ),
+                          const SizedBox(height: 8),
+                          _dialogInfoRow('Status', 'Menunggu konfirmasi admin'),
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.orange.shade200),
+                            ),
+                            child: Text(
+                              'Admin sedang memverifikasi pembayaran kamu. Proses biasanya selesai dalam 1x24 jam.',
+                              style: TextStyle(
+                                color: Colors.orange.shade800,
+                                fontSize: 12,
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      actions: [
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryBlack,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('Oke'),
                         ),
                       ],
                     ),
-                    actions: [
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primaryBlack,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        ),
-                        onPressed: () => Navigator.pop(ctx),
-                        child: const Text('Oke'),
-                      ),
-                    ],
-                  ),
-                );
-              },
-                  trailing: _statusBadge('Menunggu Konfirmasi', Colors.orange)),
+                  );
+                },
+                trailing: _statusBadge('Menunggu Konfirmasi', Colors.orange),
+              ),
               const SizedBox(height: 12),
               _menuTile(Icons.chat, 'Chat Penjaga Kos via WA', () async {
                 final booking = auth.bookingData;
                 final message = Uri.encodeComponent(
                   'Halo Kak Admin Kostraktor\n\nSaya ${booking?.nama ?? auth.userName ?? 'pengguna'} ingin menanyakan status booking saya (${booking?.roomType ?? 'unit'}).\n\nMohon bantuannya ya, terima kasih',
                 );
-                final url = Uri.parse('https://wa.me/6281234567890?text=$message');
+                final url = Uri.parse(
+                  'https://wa.me/6281234567890?text=$message',
+                );
                 if (await canLaunchUrl(url)) {
                   await launchUrl(url, mode: LaunchMode.externalApplication);
                 } else {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Tidak dapat membuka WhatsApp. Hubungi 081234567890')),
+                      const SnackBar(
+                        content: Text(
+                          'Tidak dapat membuka WhatsApp. Hubungi 081234567890',
+                        ),
+                      ),
                     );
                   }
                 }
@@ -223,18 +325,23 @@ class ProfileScreen extends StatelessWidget {
               }),
               const SizedBox(height: 12),
             ],
-            
+
             _menuTile(Icons.settings_outlined, 'Pengaturan Akun', () {
               _showPengaturanSheet(context, auth);
             }),
             const SizedBox(height: 12),
             // Tombol simulasi admin untuk demo interview
-            _menuTile(Icons.admin_panel_settings_outlined, 'Simulasi Akun Admin (Demo)', () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AdminPanelScreen()),
-              );
-            }, trailingColor: Colors.blue),
+            _menuTile(
+              Icons.admin_panel_settings_outlined,
+              'Simulasi Akun Admin (Demo)',
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AdminPanelScreen()),
+                );
+              },
+              trailingColor: Colors.blue,
+            ),
             const SizedBox(height: 40),
 
             // Logout Button
@@ -245,26 +352,41 @@ class ProfileScreen extends StatelessWidget {
                   showDialog(
                     context: context,
                     builder: (ctx) => AlertDialog(
-                      title: const Text('Keluar dari Akun', style: TextStyle(fontWeight: FontWeight.bold)),
-                      content: const Text('Apakah Anda yakin ingin keluar dari akun ini?'),
+                      title: const Text(
+                        'Keluar dari Akun',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      content: const Text(
+                        'Apakah Anda yakin ingin keluar dari akun ini?',
+                      ),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(ctx),
-                          child: const Text('Batal', style: TextStyle(color: AppTheme.textMuted)),
+                          child: const Text(
+                            'Batal',
+                            style: TextStyle(color: AppTheme.textMuted),
+                          ),
                         ),
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.redAccent,
                             foregroundColor: Colors.white,
                             elevation: 0,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                           ),
                           onPressed: () {
                             Navigator.pop(ctx);
-                            Provider.of<AuthProvider>(context, listen: false).logout();
+                            Provider.of<AuthProvider>(
+                              context,
+                              listen: false,
+                            ).logout();
                             Navigator.pushAndRemoveUntil(
                               context,
-                              MaterialPageRoute(builder: (_) => const LoginScreen()),
+                              MaterialPageRoute(
+                                builder: (_) => const LoginScreen(),
+                              ),
                               (route) => false,
                             );
                           },
@@ -275,11 +397,19 @@ class ProfileScreen extends StatelessWidget {
                   );
                 },
                 icon: const Icon(Icons.logout, color: Colors.redAccent),
-                label: const Text('Keluar dari Akun', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                label: const Text(
+                  'Keluar dari Akun',
+                  style: TextStyle(
+                    color: Colors.redAccent,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Colors.redAccent, width: 1.5),
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   backgroundColor: Colors.red.withOpacity(0.05),
                 ),
               ),
@@ -309,12 +439,23 @@ class ProfileScreen extends StatelessWidget {
           children: [
             Center(
               child: Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
             const SizedBox(height: 16),
-            const Text('Riwayat Pembayaran', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.primaryBlack)),
+            const Text(
+              'Riwayat Pembayaran',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: AppTheme.primaryBlack,
+              ),
+            ),
             const SizedBox(height: 16),
             if (auth.bookingData != null)
               Container(
@@ -329,21 +470,38 @@ class ProfileScreen extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.check_circle, color: Colors.green.shade600, size: 18),
+                        Icon(
+                          Icons.check_circle,
+                          color: Colors.green.shade600,
+                          size: 18,
+                        ),
                         const SizedBox(width: 8),
-                        Text('Pembayaran Diterima', style: TextStyle(color: Colors.green.shade700, fontWeight: FontWeight.bold, fontSize: 13)),
+                        Text(
+                          'Pembayaran Diterima',
+                          style: TextStyle(
+                            color: Colors.green.shade700,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 10),
                     _dialogInfoRow('Unit', auth.bookingData!.roomType),
                     const SizedBox(height: 4),
-                    _dialogInfoRow('Tanggal', '${auth.bookingData!.bookingTime.day}/${auth.bookingData!.bookingTime.month}/${auth.bookingData!.bookingTime.year}'),
+                    _dialogInfoRow(
+                      'Tanggal',
+                      '${auth.bookingData!.bookingTime.day}/${auth.bookingData!.bookingTime.month}/${auth.bookingData!.bookingTime.year}',
+                    ),
                     if (auth.assignedRoom != null) ...[
                       const SizedBox(height: 4),
                       _dialogInfoRow('Kamar', auth.assignedRoom!),
                     ],
                     const SizedBox(height: 4),
-                    _dialogInfoRow('Status', auth.isResident ? 'Lunas & Aktif' : 'Menunggu Konfirmasi'),
+                    _dialogInfoRow(
+                      'Status',
+                      auth.isResident ? 'Lunas & Aktif' : 'Menunggu Konfirmasi',
+                    ),
                   ],
                 ),
               )
@@ -353,9 +511,19 @@ class ProfileScreen extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 24),
                   child: Column(
                     children: [
-                      Icon(Icons.receipt_long_outlined, size: 40, color: Colors.grey.shade300),
+                      Icon(
+                        Icons.receipt_long_outlined,
+                        size: 40,
+                        color: Colors.grey.shade300,
+                      ),
                       const SizedBox(height: 8),
-                      const Text('Belum ada riwayat pembayaran', style: TextStyle(color: AppTheme.textMuted, fontSize: 13)),
+                      const Text(
+                        'Belum ada riwayat pembayaran',
+                        style: TextStyle(
+                          color: AppTheme.textMuted,
+                          fontSize: 13,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -373,7 +541,9 @@ class ProfileScreen extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
         child: Container(
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           padding: const EdgeInsets.all(20),
@@ -387,20 +557,39 @@ class ProfileScreen extends StatelessWidget {
             children: [
               Center(
                 child: Container(
-                  width: 40, height: 4,
-                  decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
-              const Text('Pengaturan Akun', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.primaryBlack)),
+              const Text(
+                'Pengaturan Akun',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: AppTheme.primaryBlack,
+                ),
+              ),
               const SizedBox(height: 16),
               _settingTile(Icons.person_outline, 'Nama', auth.userName ?? '-'),
               const SizedBox(height: 10),
               _settingTile(Icons.mail_outline, 'Email', auth.userEmail ?? '-'),
               const SizedBox(height: 10),
-              _settingTile(Icons.phone_outlined, 'Nomor HP', auth.userPhone ?? '-'),
+              _settingTile(
+                Icons.phone_outlined,
+                'Nomor HP',
+                auth.userPhone ?? '-',
+              ),
               const SizedBox(height: 10),
-              _settingTile(Icons.badge_outlined, 'Status Akun', _roleLabel(auth.currentRole)),
+              _settingTile(
+                Icons.badge_outlined,
+                'Status Akun',
+                _roleLabel(auth.currentRole),
+              ),
               const SizedBox(height: 20),
               Container(
                 padding: const EdgeInsets.all(12),
@@ -411,11 +600,21 @@ class ProfileScreen extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline, color: Colors.blue.shade600, size: 16),
+                    Icon(
+                      Icons.info_outline,
+                      color: Colors.blue.shade600,
+                      size: 16,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text('Untuk mengubah data akun, hubungi manajemen Kostraktor.',
-                          style: TextStyle(color: Colors.blue.shade800, fontSize: 11, height: 1.4)),
+                      child: Text(
+                        'Untuk mengubah data akun, hubungi manajemen Kostraktor.',
+                        style: TextStyle(
+                          color: Colors.blue.shade800,
+                          fontSize: 11,
+                          height: 1.4,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -440,8 +639,21 @@ class ProfileScreen extends StatelessWidget {
         children: [
           Icon(icon, size: 18, color: AppTheme.textMuted),
           const SizedBox(width: 12),
-          Text('$label  ', style: const TextStyle(color: AppTheme.textMuted, fontSize: 12)),
-          Expanded(child: Text(value, style: const TextStyle(color: AppTheme.primaryBlack, fontSize: 13, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
+          Text(
+            '$label  ',
+            style: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                color: AppTheme.primaryBlack,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );
@@ -451,19 +663,56 @@ class ProfileScreen extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(width: 90, child: Text(label, style: const TextStyle(color: AppTheme.textMuted, fontSize: 12))),
-        Expanded(child: Text(value, style: const TextStyle(color: AppTheme.primaryBlack, fontSize: 12, fontWeight: FontWeight.w600))),
+        SizedBox(
+          width: 90,
+          child: Text(
+            label,
+            style: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(
+              color: AppTheme.primaryBlack,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
       ],
     );
   }
 
   String _roleLabel(UserRole role) {
     switch (role) {
-      case UserRole.resident: return 'Penghuni Aktif';
-      case UserRole.pendingResident: return 'Menunggu Konfirmasi';
-      case UserRole.admin: return 'Admin';
-      default: return 'Calon Penghuni';
+      case UserRole.resident:
+        return 'Penghuni Aktif';
+      case UserRole.pendingResident:
+        return 'Menunggu Konfirmasi';
+      case UserRole.admin:
+        return 'Admin';
+      default:
+        return 'Calon Penghuni';
     }
+  }
+
+  String _formatTanggal(DateTime date) {
+    final months = [
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
+    ];
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
   Widget _buildGuestView(BuildContext context) {
@@ -476,16 +725,35 @@ class ProfileScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 80, height: 80,
-                decoration: BoxDecoration(color: Colors.grey.shade100, shape: BoxShape.circle),
-                child: const Icon(Icons.person_outline, size: 40, color: AppTheme.textMuted),
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.person_outline,
+                  size: 40,
+                  color: AppTheme.textMuted,
+                ),
               ),
               const SizedBox(height: 24),
-              const Text('Belum Masuk', style: TextStyle(color: AppTheme.primaryBlack, fontWeight: FontWeight.bold, fontSize: 22)),
+              const Text(
+                'Belum Masuk',
+                style: TextStyle(
+                  color: AppTheme.primaryBlack,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 22,
+                ),
+              ),
               const SizedBox(height: 8),
               const Text(
                 'Masuk atau daftar akun untuk melihat profil dan riwayat booking Anda.',
-                style: TextStyle(color: AppTheme.textMuted, fontSize: 14, height: 1.5),
+                style: TextStyle(
+                  color: AppTheme.textMuted,
+                  fontSize: 14,
+                  height: 1.5,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
@@ -496,10 +764,18 @@ class ProfileScreen extends StatelessWidget {
                     backgroundColor: AppTheme.primaryBlack,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen())),
-                  child: const Text('Masuk / Daftar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  ),
+                  child: const Text(
+                    'Masuk / Daftar',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
                 ),
               ),
             ],
@@ -517,7 +793,9 @@ class ProfileScreen extends StatelessWidget {
     switch (auth.currentRole) {
       case UserRole.resident:
         title = 'Penghuni Aktif';
-        subtitle = auth.assignedRoom != null ? 'Kamar: ${auth.assignedRoom}' : 'Kamar telah dikonfirmasi';
+        subtitle = auth.assignedRoom != null
+            ? 'Kamar: ${auth.assignedRoom}'
+            : 'Kamar telah dikonfirmasi';
         bgColor = Colors.green.shade50;
         borderColor = Colors.green.shade200;
         icon = Icons.check_circle;
@@ -559,9 +837,23 @@ class ProfileScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.primaryBlack)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: AppTheme.primaryBlack,
+                  ),
+                ),
                 const SizedBox(height: 3),
-                Text(subtitle, style: const TextStyle(color: AppTheme.textMuted, fontSize: 12, height: 1.4)),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: AppTheme.textMuted,
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
               ],
             ),
           ),
@@ -593,7 +885,8 @@ class ProfileScreen extends StatelessWidget {
     }
     return Consumer<AuthProvider>(
       builder: (context, auth, _) {
-        final displayLabel = (role == UserRole.resident && auth.assignedRoom != null)
+        final displayLabel =
+            (role == UserRole.resident && auth.assignedRoom != null)
             ? 'ACTIVE RESIDENT - ${auth.assignedRoom!.toUpperCase()}'
             : label;
         return Container(
@@ -603,17 +896,20 @@ class ProfileScreen extends StatelessWidget {
             border: Border.all(color: color.withOpacity(0.4)),
             borderRadius: BorderRadius.circular(6),
           ),
-          child: Text(displayLabel,
-              style: TextStyle(
-                  color: color == Colors.green
-                      ? Colors.green.shade700
-                      : color == Colors.orange
-                          ? Colors.orange.shade700
-                          : color == Colors.blue
-                              ? Colors.blue.shade700
-                              : Colors.grey.shade700,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold)),
+          child: Text(
+            displayLabel,
+            style: TextStyle(
+              color: color == Colors.green
+                  ? Colors.green.shade700
+                  : color == Colors.orange
+                  ? Colors.orange.shade700
+                  : color == Colors.blue
+                  ? Colors.blue.shade700
+                  : Colors.grey.shade700,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         );
       },
     );
@@ -624,30 +920,68 @@ class ProfileScreen extends StatelessWidget {
       children: [
         Icon(icon, size: 18, color: AppTheme.textMuted),
         const SizedBox(width: 12),
-        Text('$label: ', style: const TextStyle(color: AppTheme.textMuted, fontSize: 13)),
-        Expanded(child: Text(value, style: const TextStyle(color: AppTheme.primaryBlack, fontSize: 13, fontWeight: FontWeight.w600))),
+        Text(
+          '$label: ',
+          style: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(
+              color: AppTheme.primaryBlack,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _menuTile(IconData icon, String title, VoidCallback onTap, {Widget? trailing, Color? trailingColor}) {
+  Widget _menuTile(
+    IconData icon,
+    String title,
+    VoidCallback onTap, {
+    Widget? trailing,
+    Color? trailingColor,
+  }) {
     final iconCol = trailingColor ?? AppTheme.primaryBlack;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
-          color: trailingColor != null ? trailingColor.withOpacity(0.05) : Colors.white,
+          color: trailingColor != null
+              ? trailingColor.withOpacity(0.05)
+              : Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: trailingColor != null ? trailingColor.withOpacity(0.3) : Colors.grey.shade200),
+          border: Border.all(
+            color: trailingColor != null
+                ? trailingColor.withOpacity(0.3)
+                : Colors.grey.shade200,
+          ),
         ),
         child: Row(
           children: [
             Icon(icon, color: iconCol, size: 22),
             const SizedBox(width: 16),
-            Expanded(child: Text(title, style: TextStyle(color: iconCol, fontWeight: FontWeight.w500, fontSize: 14))),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: iconCol,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                ),
+              ),
+            ),
             if (trailing != null) trailing,
-            if (trailing == null) Icon(Icons.arrow_forward_ios, color: trailingColor ?? AppTheme.textMuted, size: 14),
+            if (trailing == null)
+              Icon(
+                Icons.arrow_forward_ios,
+                color: trailingColor ?? AppTheme.textMuted,
+                size: 14,
+              ),
           ],
         ),
       ),
@@ -662,7 +996,14 @@ class ProfileScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: color.shade300),
       ),
-      child: Text(label, style: TextStyle(color: color.shade800, fontSize: 11, fontWeight: FontWeight.bold)),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color.shade800,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
     );
   }
 }

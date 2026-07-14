@@ -1,9 +1,9 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import '../utils/app_theme.dart';
 import '../providers/auth_provider.dart';
 import 'main_navigation.dart';
@@ -75,6 +75,24 @@ class _CountdownScreenState extends State<CountdownScreen> {
     final m = (_secondsLeft % 3600) ~/ 60;
     final s = _secondsLeft % 60;
     return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
+
+  String _formatTanggal(DateTime date) {
+    final months = [
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
+    ];
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
   int _getBaseAmount() {
@@ -215,6 +233,67 @@ class _CountdownScreenState extends State<CountdownScreen> {
               _buildTimerBanner(),
             const SizedBox(height: 24),
 
+            // Informasi Booking
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: Colors.blue.shade700,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Informasi Booking',
+                        style: TextStyle(
+                          color: AppTheme.primaryBlack,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _buildInfoRow(
+                    Icons.person_outline,
+                    'Nama',
+                    widget.bookingData?.nama ?? '-',
+                  ),
+                  const SizedBox(height: 10),
+                  _buildInfoRow(
+                    Icons.phone_outlined,
+                    'Nomor HP',
+                    widget.bookingData?.phone ?? '-',
+                  ),
+                  const SizedBox(height: 10),
+                  _buildInfoRow(
+                    Icons.apartment,
+                    'Tipe Kamar',
+                    widget.bookingData?.roomType ?? '-',
+                  ),
+                  if (widget.bookingData?.tanggalMulaiMenghuni != null) ...[
+                    const SizedBox(height: 10),
+                    _buildInfoRow(
+                      Icons.calendar_month,
+                      'Mulai Menghuni',
+                      _formatTanggal(widget.bookingData!.tanggalMulaiMenghuni!),
+                      highlight: true,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
             // Bank Transfer Card
             _buildBankCard(depositFormatted, totalFormatted),
             const SizedBox(height: 24),
@@ -300,6 +379,10 @@ class _CountdownScreenState extends State<CountdownScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 24),
+
+              // Ulasan Penghuni Section (only shown when approved)
+              _buildReviewsSection(auth),
             ],
             const SizedBox(height: 40),
           ],
@@ -872,4 +955,292 @@ class _CountdownScreenState extends State<CountdownScreen> {
       ],
     );
   }
+
+  Widget _buildInfoRow(
+    IconData icon,
+    String label,
+    String value, {
+    bool highlight = false,
+  }) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 18,
+          color: highlight ? Colors.blue.shade700 : Colors.grey.shade600,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(color: AppTheme.textMuted, fontSize: 11),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: TextStyle(
+                  color: highlight
+                      ? Colors.blue.shade800
+                      : AppTheme.primaryBlack,
+                  fontWeight: highlight ? FontWeight.bold : FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatReviewDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays == 0) {
+      if (difference.inHours == 0) {
+        if (difference.inMinutes == 0) {
+          return 'Baru saja';
+        }
+        return '${difference.inMinutes} menit yang lalu';
+      }
+      return '${difference.inHours} jam yang lalu';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} hari yang lalu';
+    } else {
+      final months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'Mei',
+        'Jun',
+        'Jul',
+        'Ags',
+        'Sep',
+        'Okt',
+        'Nov',
+        'Des',
+      ];
+      return '${date.day} ${months[date.month - 1]} ${date.year}';
+    }
+  }
+
+  Widget _buildReviewsSection(AuthProvider auth) {
+    final reviews = auth.reviews;
+    final avgRating = auth.averageRating;
+    final totalReviews = reviews.length;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppTheme.accentGold.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.star_rounded,
+                  color: AppTheme.accentGold,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Ulasan Penghuni',
+                      style: TextStyle(
+                        color: AppTheme.primaryBlack,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (totalReviews > 0)
+                      Text(
+                        '$totalReviews ulasan • ${avgRating.toStringAsFixed(1)} ⭐',
+                        style: TextStyle(
+                          color: AppTheme.textMuted,
+                          fontSize: 12,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (totalReviews == 0)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.rate_review_outlined,
+                      size: 48,
+                      color: Colors.grey.shade300,
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Belum ada ulasan',
+                      style: TextStyle(color: AppTheme.textMuted, fontSize: 14),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            Column(
+              children: reviews.take(3).map((review) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _ReviewCard(
+                    name: review.userName,
+                    rating: review.rating,
+                    date: _formatReviewDate(review.createdAt),
+                    comment: review.comment,
+                  ),
+                );
+              }).toList(),
+            ),
+          if (totalReviews > 3) ...[
+            const SizedBox(height: 8),
+            Center(
+              child: Text(
+                '+ ${totalReviews - 3} ulasan lainnya',
+                style: TextStyle(
+                  color: AppTheme.textMuted,
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ReviewCard extends StatelessWidget {
+  final String name;
+  final double rating;
+  final String date;
+  final String comment;
+
+  const _ReviewCard({
+    required this.name,
+    required this.rating,
+    required this.date,
+    required this.comment,
+  });
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: Colors.grey.shade50,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: Colors.grey.shade200),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: AppTheme.primaryBlack,
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  name[0].toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      color: AppTheme.primaryBlack,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      RatingBarIndicator(
+                        rating: rating,
+                        itemBuilder: (context, index) =>
+                            const Icon(Icons.star, color: AppTheme.accentGold),
+                        itemCount: 5,
+                        itemSize: 11.0,
+                        direction: Axis.horizontal,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        date,
+                        style: TextStyle(
+                          color: AppTheme.textMuted,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          comment,
+          style: const TextStyle(
+            color: AppTheme.textMuted,
+            fontSize: 12,
+            height: 1.5,
+          ),
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    ),
+  );
 }

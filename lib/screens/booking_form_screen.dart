@@ -18,7 +18,9 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
   final _namaController = TextEditingController();
   final _phoneController = TextEditingController();
   final _nikController = TextEditingController();
+  final _tanggalController = TextEditingController();
   bool _isLoading = false;
+  DateTime? _selectedDate;
 
   // Verification state
   Uint8List? _ktpBytes;
@@ -38,15 +40,62 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
     _namaController.dispose();
     _phoneController.dispose();
     _nikController.dispose();
+    _tanggalController.dispose();
     super.dispose();
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime now = DateTime.now();
+    final DateTime firstDate = now;
+    final DateTime lastDate = DateTime(now.year + 1);
+
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? now,
+      firstDate: firstDate,
+      lastDate: lastDate,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppTheme.primaryBlack,
+              onPrimary: Colors.white,
+              onSurface: AppTheme.primaryBlack,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+        // Format tanggal manual tanpa dependency locale
+        final months = [
+          'Januari',
+          'Februari',
+          'Maret',
+          'April',
+          'Mei',
+          'Juni',
+          'Juli',
+          'Agustus',
+          'September',
+          'Oktober',
+          'November',
+          'Desember',
+        ];
+        _tanggalController.text =
+            '${picked.day} ${months[picked.month - 1]} ${picked.year}';
+      });
+    }
   }
 
   Future<void> _openLiveness() async {
     final result = await Navigator.push<LivenessResult>(
       context,
-      MaterialPageRoute(
-        builder: (_) => LivenessScreen(ktpBytes: _ktpBytes),
-      ),
+      MaterialPageRoute(builder: (_) => LivenessScreen(ktpBytes: _ktpBytes)),
     );
     if (result == null) return;
     setState(() {
@@ -63,19 +112,38 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
 
     if (nama.isEmpty || phone.isEmpty || nik.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Harap lengkapi semua data diri.'), backgroundColor: Colors.redAccent),
+        const SnackBar(
+          content: Text('Harap lengkapi semua data diri.'),
+          backgroundColor: Colors.redAccent,
+        ),
       );
       return;
     }
     if (phone.length < 10) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nomor HP minimal 10 digit.'), backgroundColor: Colors.redAccent),
+        const SnackBar(
+          content: Text('Nomor HP minimal 10 digit.'),
+          backgroundColor: Colors.redAccent,
+        ),
       );
       return;
     }
     if (nik.length != 16) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nomor KTP harus tepat 16 digit.'), backgroundColor: Colors.redAccent),
+        const SnackBar(
+          content: Text('Nomor KTP harus tepat 16 digit.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    if (_selectedDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Harap pilih tanggal mulai menghuni.'),
+          backgroundColor: Colors.redAccent,
+        ),
       );
       return;
     }
@@ -83,10 +151,14 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
     if (!_verificationPassed) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Harap selesaikan verifikasi identitas & liveness terlebih dahulu.'),
+          content: const Text(
+            'Harap selesaikan verifikasi identitas & liveness terlebih dahulu.',
+          ),
           backgroundColor: Colors.redAccent,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
           action: SnackBarAction(
             label: 'Verifikasi',
             textColor: Colors.white,
@@ -106,6 +178,7 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
       nik: _nikController.text.trim(),
       roomType: widget.unitData?['title'] ?? 'Tipe Standard',
       bookingTime: DateTime.now(),
+      tanggalMulaiMenghuni: _selectedDate,
       ktpBytes: _ktpBytes,
       selfieBytes: _selfieBytes,
     );
@@ -116,7 +189,8 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => CountdownScreen(unitData: widget.unitData, bookingData: booking),
+        builder: (_) =>
+            CountdownScreen(unitData: widget.unitData, bookingData: booking),
       ),
     );
   }
@@ -131,8 +205,13 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Pengajuan Sewa',
-            style: TextStyle(color: AppTheme.primaryBlack, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Pengajuan Sewa',
+          style: TextStyle(
+            color: AppTheme.primaryBlack,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         centerTitle: true,
         iconTheme: const IconThemeData(color: AppTheme.primaryBlack),
         bottom: PreferredSize(
@@ -175,23 +254,35 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
                       color: AppTheme.primaryBlack,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.apartment, color: Colors.white, size: 24),
+                    child: const Icon(
+                      Icons.apartment,
+                      color: Colors.white,
+                      size: 24,
+                    ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(unitTitle,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.primaryBlack,
-                                fontSize: 15),
-                            overflow: TextOverflow.ellipsis),
+                        Text(
+                          unitTitle,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.primaryBlack,
+                            fontSize: 15,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                         const SizedBox(height: 2),
-                        const Text('Pasar Rebo, Jakarta Timur',
-                            style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
-                            overflow: TextOverflow.ellipsis),
+                        const Text(
+                          'Pasar Rebo, Jakarta Timur',
+                          style: TextStyle(
+                            color: AppTheme.textMuted,
+                            fontSize: 12,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ],
                     ),
                   ),
@@ -200,13 +291,21 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(unitPrice,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.primaryBlack,
-                              fontSize: 13)),
-                      const Text('/bulan',
-                          style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+                      Text(
+                        unitPrice,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primaryBlack,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const Text(
+                        '/bulan',
+                        style: TextStyle(
+                          color: AppTheme.textMuted,
+                          fontSize: 11,
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -223,33 +322,153 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
                 border: Border.all(color: Colors.grey.shade200),
                 boxShadow: [
                   BoxShadow(
-                      color: Colors.black.withOpacity(0.03),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4))
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
                 ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text('Data Diri Lengkap',
-                      style: TextStyle(
-                          color: AppTheme.primaryBlack,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16)),
+                  const Text(
+                    'Data Diri Lengkap',
+                    style: TextStyle(
+                      color: AppTheme.primaryBlack,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  const Text('Sesuai dengan KTP/Identitas resmi',
-                      style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+                  const Text(
+                    'Sesuai dengan KTP/Identitas resmi',
+                    style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                  ),
                   const SizedBox(height: 20),
-                  _buildInput(_namaController, Icons.person_outline, 'Nama Lengkap (Sesuai KTP)',
-                      textCapitalization: TextCapitalization.characters),
+                  _buildInput(
+                    _namaController,
+                    Icons.person_outline,
+                    'Nama Lengkap (Sesuai KTP)',
+                    textCapitalization: TextCapitalization.characters,
+                  ),
                   const SizedBox(height: 16),
-                  _buildInput(_phoneController, Icons.phone_outlined,
-                      'Nomor HP (min. 10 digit)',
-                      isPhone: true),
+                  _buildInput(
+                    _phoneController,
+                    Icons.phone_outlined,
+                    'Nomor HP (min. 10 digit)',
+                    isPhone: true,
+                  ),
                   const SizedBox(height: 16),
-                  _buildInput(_nikController, Icons.credit_card_outlined,
-                      'NIK (16 digit angka)',
-                      isNumber: true, maxLength: 16),
+                  _buildInput(
+                    _nikController,
+                    Icons.credit_card_outlined,
+                    'NIK (16 digit angka)',
+                    isNumber: true,
+                    maxLength: 16,
+                  ),
+                  const SizedBox(height: 16),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      GestureDetector(
+                        onTap: () => _selectDate(context),
+                        child: AbsorbPointer(
+                          child: TextField(
+                            controller: _tanggalController,
+                            decoration: InputDecoration(
+                              hintText: 'Tap untuk pilih tanggal',
+                              hintStyle: const TextStyle(
+                                color: AppTheme.textMuted,
+                                fontSize: 14,
+                              ),
+                              prefixIcon: const Icon(
+                                Icons.calendar_today_outlined,
+                                color: AppTheme.textMuted,
+                                size: 20,
+                              ),
+                              suffixIcon: Container(
+                                margin: const EdgeInsets.all(8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade50,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Colors.blue.shade300,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.event,
+                                      color: Colors.blue.shade700,
+                                      size: 16,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Pilih',
+                                      style: TextStyle(
+                                        color: Colors.blue.shade700,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              filled: true,
+                              fillColor: _selectedDate != null
+                                  ? Colors.blue.shade50
+                                  : Colors.grey.shade50,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 16,
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: _selectedDate != null
+                                      ? Colors.blue.shade300
+                                      : Colors.grey.shade300,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.blue.shade500,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            size: 13,
+                            color: Colors.blue.shade600,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Ketuk field di atas untuk memilih kapan Anda mulai tinggal',
+                              style: TextStyle(
+                                color: Colors.blue.shade700,
+                                fontSize: 11,
+                                height: 1.3,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -269,9 +488,10 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                      color: Colors.black.withOpacity(0.03),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4))
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
                 ],
               ),
               child: Column(
@@ -283,26 +503,33 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Verifikasi Identitas',
-                                style: TextStyle(
-                                    color: AppTheme.primaryBlack,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16)),
+                            const Text(
+                              'Verifikasi Identitas',
+                              style: TextStyle(
+                                color: AppTheme.primaryBlack,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
                             const SizedBox(height: 2),
                             Text(
                               'Foto KTP + Liveness wajah (wajib)',
                               style: TextStyle(
-                                  color: _verificationPassed
-                                      ? Colors.green.shade700
-                                      : AppTheme.textMuted,
-                                  fontSize: 12),
+                                color: _verificationPassed
+                                    ? Colors.green.shade700
+                                    : AppTheme.textMuted,
+                                fontSize: 12,
+                              ),
                             ),
                           ],
                         ),
                       ),
                       if (_verificationPassed)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.green.shade50,
                             borderRadius: BorderRadius.circular(20),
@@ -311,13 +538,20 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.check_circle, color: Colors.green.shade600, size: 14),
+                              Icon(
+                                Icons.check_circle,
+                                color: Colors.green.shade600,
+                                size: 14,
+                              ),
                               const SizedBox(width: 4),
-                              Text('Terverifikasi',
-                                  style: TextStyle(
-                                      color: Colors.green.shade700,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold)),
+                              Text(
+                                'Terverifikasi',
+                                style: TextStyle(
+                                  color: Colors.green.shade700,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -326,12 +560,28 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
                   const SizedBox(height: 16),
 
                   // Preview thumbnails if verified
-                  if (_verificationPassed && _ktpBytes != null && _selfieBytes != null) ...[
+                  if (_verificationPassed &&
+                      _ktpBytes != null &&
+                      _selfieBytes != null) ...[
                     Row(
                       children: [
-                        Expanded(child: _thumbPreview(_ktpBytes!, 'KTP', Icons.credit_card, Colors.blue)),
+                        Expanded(
+                          child: _thumbPreview(
+                            _ktpBytes!,
+                            'KTP',
+                            Icons.credit_card,
+                            Colors.blue,
+                          ),
+                        ),
                         const SizedBox(width: 10),
-                        Expanded(child: _thumbPreview(_selfieBytes!, 'Selfie', Icons.face, Colors.purple)),
+                        Expanded(
+                          child: _thumbPreview(
+                            _selfieBytes!,
+                            'Selfie',
+                            Icons.face,
+                            Colors.purple,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 14),
@@ -386,12 +636,18 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
                     const SizedBox(height: 10),
                     Row(
                       children: [
-                        Icon(Icons.info_outline, size: 14, color: Colors.orange.shade600),
+                        Icon(
+                          Icons.info_outline,
+                          size: 14,
+                          color: Colors.orange.shade600,
+                        ),
                         const SizedBox(width: 6),
                         Text(
                           'Wajib diselesaikan sebelum submit',
                           style: TextStyle(
-                              color: Colors.orange.shade700, fontSize: 11),
+                            color: Colors.orange.shade700,
+                            fontSize: 11,
+                          ),
                         ),
                       ],
                     ),
@@ -412,7 +668,8 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                   elevation: _verificationPassed ? 2 : 0,
                 ),
                 onPressed: _isLoading ? null : _handleSubmit,
@@ -421,16 +678,23 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2))
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
                     : Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           if (!_verificationPassed)
                             const Icon(Icons.lock, size: 16),
                           if (!_verificationPassed) const SizedBox(width: 6),
-                          const Text('LANJUT KE PEMBAYARAN',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 15)),
+                          const Text(
+                            'LANJUT KE PEMBAYARAN',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
                         ],
                       ),
               ),
@@ -442,7 +706,12 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
     );
   }
 
-  Widget _thumbPreview(Uint8List bytes, String label, IconData icon, MaterialColor color) {
+  Widget _thumbPreview(
+    Uint8List bytes,
+    String label,
+    IconData icon,
+    MaterialColor color,
+  ) {
     return Container(
       height: 80,
       decoration: BoxDecoration(
@@ -456,16 +725,21 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
           children: [
             Image.memory(bytes, fit: BoxFit.cover),
             Positioned(
-              bottom: 0, left: 0, right: 0,
+              bottom: 0,
+              left: 0,
+              right: 0,
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 color: Colors.black45,
-                child: Text(label,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold)),
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
           ],
@@ -474,10 +748,15 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
     );
   }
 
-  Widget _buildInput(TextEditingController ctrl, IconData icon, String hint,
-      {bool isPhone = false, bool isNumber = false,
-       TextCapitalization textCapitalization = TextCapitalization.none,
-       int? maxLength}) {
+  Widget _buildInput(
+    TextEditingController ctrl,
+    IconData icon,
+    String hint, {
+    bool isPhone = false,
+    bool isNumber = false,
+    TextCapitalization textCapitalization = TextCapitalization.none,
+    int? maxLength,
+  }) {
     return TextField(
       controller: ctrl,
       keyboardType: isPhone
@@ -486,13 +765,20 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
       textCapitalization: textCapitalization,
       maxLength: maxLength,
       buildCounter: maxLength != null
-          ? (context, {required currentLength, required isFocused, maxLength}) =>
-              Text('$currentLength / $maxLength',
-                  style: TextStyle(
-                      color: currentLength == maxLength
-                          ? Colors.green.shade700
-                          : AppTheme.textMuted,
-                      fontSize: 11))
+          ? (
+              context, {
+              required currentLength,
+              required isFocused,
+              maxLength,
+            }) => Text(
+              '$currentLength / $maxLength',
+              style: TextStyle(
+                color: currentLength == maxLength
+                    ? Colors.green.shade700
+                    : AppTheme.textMuted,
+                fontSize: 11,
+              ),
+            )
           : null,
       decoration: InputDecoration(
         hintText: hint,
@@ -500,7 +786,10 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
         prefixIcon: Icon(icon, color: AppTheme.textMuted, size: 20),
         filled: true,
         fillColor: Colors.grey.shade50,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: Colors.grey.shade300),
@@ -523,22 +812,29 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
             shape: BoxShape.circle,
             color: isActive ? AppTheme.primaryBlack : Colors.white,
             border: Border.all(
-                color: isActive ? AppTheme.primaryBlack : Colors.grey.shade300,
-                width: 2),
+              color: isActive ? AppTheme.primaryBlack : Colors.grey.shade300,
+              width: 2,
+            ),
           ),
           child: Center(
-            child: Text(step,
-                style: TextStyle(
-                    color: isActive ? Colors.white : AppTheme.textMuted,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13)),
+            child: Text(
+              step,
+              style: TextStyle(
+                color: isActive ? Colors.white : AppTheme.textMuted,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 4),
-        Text(label,
-            style: TextStyle(
-                fontSize: 10,
-                color: isActive ? AppTheme.primaryBlack : AppTheme.textMuted)),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            color: isActive ? AppTheme.primaryBlack : AppTheme.textMuted,
+          ),
+        ),
       ],
     );
   }
