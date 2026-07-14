@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../utils/app_theme.dart';
+import '../providers/auth_provider.dart';
 import 'detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -61,13 +64,148 @@ class _HomeScreenState extends State<HomeScreen> {
     }).toList();
   }
 
+  Future<void> _launchWa(BuildContext context, String message) async {
+    final encoded = Uri.encodeComponent('$message\n\n(via Kostraktor App)');
+    final url = Uri.parse('https://wa.me/6281234567890?text=$encoded');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tidak dapat membuka WhatsApp. Hubungi 081234567890')),
+        );
+      }
+    }
+  }
+
+  void _showWaBottomSheet(BuildContext context) {
+    const templates = [
+      'Halo, saya ingin tanya informasi kamar yang tersedia',
+      'Halo, saya ingin tanya soal harga dan fasilitas',
+      'Halo, saya ingin jadwalkan kunjungan ke kos',
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 20),
+            // WA icon
+            Center(
+              child: Container(
+                width: 64, height: 64,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF25D366),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.chat, color: Colors.white, size: 32),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Hubungi Admin Kostraktor',
+              style: TextStyle(
+                  color: AppTheme.primaryBlack,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Tanya-tanya dulu sebelum sewa? Kami siap bantu!',
+              style: TextStyle(color: AppTheme.textMuted, fontSize: 13, height: 1.4),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Pilih template pesan:',
+              style: TextStyle(
+                  color: AppTheme.primaryBlack,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13),
+            ),
+            const SizedBox(height: 10),
+            ...templates.map((msg) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _launchWa(context, msg);
+                    },
+                    icon: const Icon(Icons.send, size: 16),
+                    label: Text(msg,
+                        style: const TextStyle(fontSize: 12, height: 1.4),
+                        textAlign: TextAlign.left),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF25D366),
+                      side: const BorderSide(color: Color(0xFF25D366)),
+                      alignment: Alignment.centerLeft,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                )),
+            const SizedBox(height: 4),
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _launchWa(context, 'Halo Admin Kostraktor, saya ingin bertanya');
+              },
+              icon: const Icon(Icons.edit_outlined, size: 16),
+              label: const Text('Tulis Pesan Sendiri',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.primaryBlack,
+                side: const BorderSide(color: AppTheme.primaryBlack),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark);
     final filtered = _filteredUnits;
+    final auth = Provider.of<AuthProvider>(context);
 
     return Scaffold(
       backgroundColor: AppTheme.bgWhite,
+      // WA FAB — sembunyikan untuk admin
+      floatingActionButton: auth.isAdmin
+          ? null
+          : FloatingActionButton(
+              onPressed: () => _showWaBottomSheet(context),
+              backgroundColor: const Color(0xFF25D366),
+              tooltip: 'Hubungi Admin via WhatsApp',
+              child: const Icon(Icons.chat, color: Colors.white),
+            ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -83,7 +221,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Image.network(
                         'https://tesmohamadasep.sirv.com/duaenam-grp-source/assets/logo/kostraktor.jpeg',
                         height: 24,
-                        errorBuilder: (_, __, ___) => const Text(
+                        errorBuilder: (context, error, stackTrace) => const Text(
                           'Kostraktor',
                           style: TextStyle(
                             color: AppTheme.primaryBlack,
@@ -106,30 +244,35 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: AppTheme.primaryBlack,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.notifications_none, color: Colors.white, size: 18),
+                    child: const Icon(Icons.notifications_none,
+                        color: Colors.white, size: 18),
                   ),
                 ],
               ),
             ),
 
-            // Search bar — aktif
+            // Search bar
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: TextField(
                 controller: _searchController,
                 onChanged: (val) => setState(() => _searchQuery = val),
-                style: const TextStyle(color: AppTheme.primaryBlack, fontSize: 14),
+                style: const TextStyle(
+                    color: AppTheme.primaryBlack, fontSize: 14),
                 decoration: InputDecoration(
                   hintText: 'Cari kamar, tipe, lokasi...',
-                  hintStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 14),
-                  prefixIcon: const Icon(Icons.search, color: AppTheme.textMuted, size: 20),
+                  hintStyle: const TextStyle(
+                      color: AppTheme.textMuted, fontSize: 14),
+                  prefixIcon: const Icon(Icons.search,
+                      color: AppTheme.textMuted, size: 20),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? GestureDetector(
                           onTap: () {
                             _searchController.clear();
                             setState(() => _searchQuery = '');
                           },
-                          child: const Icon(Icons.close, color: AppTheme.textMuted, size: 18),
+                          child: const Icon(Icons.close,
+                              color: AppTheme.textMuted, size: 18),
                         )
                       : null,
                   filled: true,
@@ -141,37 +284,49 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppTheme.primaryBlack, width: 1.5),
+                    borderSide: const BorderSide(
+                        color: AppTheme.primaryBlack, width: 1.5),
                   ),
                 ),
               ),
             ),
 
-            // Filter chips — aktif
+            // Filter chips
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 14, 0, 14),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
-                  children: ['Semua', 'Standard', 'Deluxe', 'Premium'].map((label) {
+                  children:
+                      ['Semua', 'Standard', 'Deluxe', 'Premium'].map((label) {
                     final isActive = _activeFilter == label;
                     return Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: GestureDetector(
-                        onTap: () => setState(() => _activeFilter = label),
+                        onTap: () =>
+                            setState(() => _activeFilter = label),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 18, vertical: 9),
                           decoration: BoxDecoration(
-                            color: isActive ? AppTheme.primaryBlack : Colors.white,
+                            color: isActive
+                                ? AppTheme.primaryBlack
+                                : Colors.white,
                             border: Border.all(
-                                color: isActive ? AppTheme.primaryBlack : Colors.grey.shade300),
+                                color: isActive
+                                    ? AppTheme.primaryBlack
+                                    : Colors.grey.shade300),
                             borderRadius: BorderRadius.circular(100),
                           ),
                           child: Text(
                             label,
                             style: TextStyle(
-                              color: isActive ? Colors.white : AppTheme.textMuted,
-                              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                              color: isActive
+                                  ? Colors.white
+                                  : AppTheme.textMuted,
+                              fontWeight: isActive
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
                               fontSize: 13,
                             ),
                           ),
@@ -192,7 +347,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Flexible(
                     child: Text(
                       _searchQuery.isNotEmpty
-                          ? 'Hasil pencarian "${_searchQuery}"'
+                          ? 'Hasil pencarian "$_searchQuery"'
                           : _activeFilter == 'Semua'
                               ? 'Unit Tersedia'
                               : 'Tipe $_activeFilter',
@@ -205,7 +360,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   Text(
                     '${filtered.length} unit',
-                    style: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                    style: const TextStyle(
+                        color: AppTheme.textMuted, fontSize: 13),
                   ),
                 ],
               ),
@@ -216,15 +372,18 @@ class _HomeScreenState extends State<HomeScreen> {
               child: filtered.isEmpty
                   ? _buildEmptyState()
                   : GridView.builder(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      padding:
+                          const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 2,
                         mainAxisSpacing: 14,
                         crossAxisSpacing: 14,
                         childAspectRatio: 0.72,
                       ),
                       itemCount: filtered.length,
-                      itemBuilder: (context, i) => _UnitCard(unit: filtered[i]),
+                      itemBuilder: (context, i) =>
+                          _UnitCard(unit: filtered[i]),
                     ),
             ),
           ],
@@ -240,9 +399,10 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.search_off_rounded, size: 56, color: Colors.grey.shade300),
+            Icon(Icons.search_off_rounded,
+                size: 56, color: Colors.grey.shade300),
             const SizedBox(height: 16),
-            Text(
+            const Text(
               'Tidak ada unit yang cocok',
               style: TextStyle(
                   color: AppTheme.primaryBlack,
@@ -250,7 +410,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            Text(
+            const Text(
               'Coba kata kunci lain atau reset filter.',
               style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
               textAlign: TextAlign.center,
@@ -259,8 +419,10 @@ class _HomeScreenState extends State<HomeScreen> {
             OutlinedButton(
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: AppTheme.primaryBlack),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 24, vertical: 10),
               ),
               onPressed: () {
                 _searchController.clear();
@@ -270,7 +432,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 });
               },
               child: const Text('Reset Pencarian',
-                  style: TextStyle(color: AppTheme.primaryBlack, fontWeight: FontWeight.bold)),
+                  style: TextStyle(
+                      color: AppTheme.primaryBlack,
+                      fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -297,7 +461,7 @@ class _UnitCard extends StatelessWidget {
           border: Border.all(color: Colors.grey.shade200),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -308,20 +472,24 @@ class _UnitCard extends StatelessWidget {
           children: [
             Expanded(
               child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(18)),
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
                     Image.network(
                       unit['image'],
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
+                      errorBuilder: (context, error, stackTrace) => Container(
                         color: Colors.grey.shade100,
-                        child: const Icon(Icons.apartment, size: 48, color: Colors.grey),
+                        child: const Icon(Icons.apartment,
+                            size: 48, color: Colors.grey),
                       ),
                     ),
                     Positioned(
-                      bottom: 0, left: 0, right: 0,
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
                       child: Container(
                         height: 50,
                         decoration: BoxDecoration(
@@ -330,7 +498,7 @@ class _UnitCard extends StatelessWidget {
                             end: Alignment.bottomCenter,
                             colors: [
                               Colors.transparent,
-                              Colors.black.withOpacity(0.3)
+                              Colors.black.withValues(alpha: 0.3),
                             ],
                           ),
                         ),
@@ -358,12 +526,14 @@ class _UnitCard extends StatelessWidget {
                   const SizedBox(height: 3),
                   Row(
                     children: [
-                      const Icon(Icons.location_on, color: AppTheme.accentGold, size: 11),
+                      const Icon(Icons.location_on,
+                          color: AppTheme.accentGold, size: 11),
                       const SizedBox(width: 2),
-                      Expanded(
+                      const Expanded(
                         child: Text(
                           'Jakarta Timur',
-                          style: const TextStyle(color: AppTheme.textMuted, fontSize: 11),
+                          style: TextStyle(
+                              color: AppTheme.textMuted, fontSize: 11),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),

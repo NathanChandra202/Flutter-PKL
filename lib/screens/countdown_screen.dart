@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -26,8 +25,6 @@ class _CountdownScreenState extends State<CountdownScreen> {
   int _secondsLeft = _totalSeconds;
   Timer? _timer;
   bool _expired = false;
-
-  // Bukti bayar & referensi
   Uint8List? _buktiBayarBytes;
   final _refController = TextEditingController();
   bool _refDuplicate = false;
@@ -37,10 +34,8 @@ class _CountdownScreenState extends State<CountdownScreen> {
   @override
   void initState() {
     super.initState();
-    _uniqueCode =
-        (widget.bookingData?.bookingTime.millisecondsSinceEpoch ??
-            DateTime.now().millisecondsSinceEpoch) %
-        1000;
+    // Use the guaranteed-unique code from BookingData (generated in AuthProvider)
+    _uniqueCode = widget.bookingData?.uniquePaymentCode ?? generateUniquePaymentCode();
     _startTimer();
   }
 
@@ -144,9 +139,12 @@ class _CountdownScreenState extends State<CountdownScreen> {
     setState(() => _refDuplicate = false);
     _usedReferensi.add(ref);
 
-    // Update booking with bukti bayar + referensi
+    // Save bukti bayar + referensi ke BookingData supaya admin bisa lihat
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    auth.markWaConfirmed();
+    auth.updateBuktiBayar(
+      buktiBayarBytes: _buktiBayarBytes!,
+      referensiTransaksi: ref,
+    );
     setState(() => _waContacted = true);
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -427,7 +425,7 @@ class _CountdownScreenState extends State<CountdownScreen> {
 
   Widget _buildBankCard(String depositFormatted, String totalFormatted) {
     const rekening = '123-00-998877-1';
-    return Container(
+    return Container( 
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -435,7 +433,7 @@ class _CountdownScreenState extends State<CountdownScreen> {
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
