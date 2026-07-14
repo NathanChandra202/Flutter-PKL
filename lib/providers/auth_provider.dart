@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 
 /// Roles in the app
@@ -7,6 +8,36 @@ import 'package:flutter/foundation.dart';
 /// - [resident]        : confirmed active resident
 /// - [admin]           : admin panel access
 enum UserRole { guest, calon, pendingResident, resident, admin }
+
+/// Tracks all unique codes currently in use across the app session.
+/// Guarantees no two active bookings share the same 3-digit code.
+final Set<int> _usedUniqueCodes = {};
+
+/// Generates a guaranteed-unique 3-digit code (100–999).
+/// Retries on collision — worst case O(n) but collision rate is negligible
+/// at kos scale (max ~900 concurrent bookings before exhaustion).
+int generateUniquePaymentCode() {
+  final rng = Random.secure();
+  int code;
+  int attempts = 0;
+  do {
+    code = rng.nextInt(900) + 100; // always 3 digits: 100–999
+    attempts++;
+    // Safety valve: if somehow exhausted (>900 active bookings), expand to 4 digits
+    if (attempts > 1800) {
+      code = rng.nextInt(9000) + 1000;
+      if (!_usedUniqueCodes.contains(code)) break;
+    }
+  } while (_usedUniqueCodes.contains(code));
+
+  _usedUniqueCodes.add(code);
+  return code;
+}
+
+/// Release a code when booking is cancelled/expired/approved so it can be reused.
+void releaseUniquePaymentCode(int code) {
+  _usedUniqueCodes.remove(code);
+}
 
 class Review {
   final String userName;
@@ -32,9 +63,10 @@ class BookingData {
   final String nik;
   final String roomType;
   final DateTime bookingTime;
-  final DateTime? tanggalMulaiMenghuni; // NEW: Tanggal mulai menghuni
+  final DateTime? tanggalMulaiMenghuni; // Tanggal mulai menghuni
   bool waConfirmed; // user has sent WA to penjaga kos
   final String referensiTransaksi; // auto-generated reference number
+  final int uniquePaymentCode; // guaranteed unique 3-digit code
   final Uint8List? ktpBytes;
   final Uint8List? selfieBytes;
   final Uint8List? buktiBayarBytes;
@@ -48,10 +80,12 @@ class BookingData {
     this.tanggalMulaiMenghuni,
     this.waConfirmed = false,
     String? referensiTransaksi,
+    int? uniquePaymentCode,
     this.ktpBytes,
     this.selfieBytes,
     this.buktiBayarBytes,
-  }) : referensiTransaksi = referensiTransaksi ?? _generateRef();
+  }) : referensiTransaksi = referensiTransaksi ?? _generateRef(),
+       uniquePaymentCode = uniquePaymentCode ?? generateUniquePaymentCode();
 
   static String _generateRef() {
     final now = DateTime.now();
@@ -331,8 +365,52 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Save bukti bayar + referensi transaksi to the active booking data
+  /// and sync back to the pending approvals queue so admin can see it.
+  void updateBuktiBayar({
+    required Uint8List buktiBayarBytes,
+    required String referensiTransaksi,
+  }) {
+    if (_bookingData == null) return;
+
+    // Replace BookingData with updated copy containing bukti bayar
+    _bookingData = BookingData(
+      nama: _bookingData!.nama,
+      phone: _bookingData!.phone,
+      nik: _bookingData!.nik,
+      roomType: _bookingData!.roomType,
+      bookingTime: _bookingData!.bookingTime,
+      tanggalMulaiMenghuni: _bookingData!.tanggalMulaiMenghuni,
+      waConfirmed: true,
+      referensiTransaksi: referensiTransaksi,
+      uniquePaymentCode: _bookingData!.uniquePaymentCode,
+      ktpBytes: _bookingData!.ktpBytes,
+      selfieBytes: _bookingData!.selfieBytes,
+      buktiBayarBytes: buktiBayarBytes,
+    );
+
+    // Sync back to the pending approvals queue so admin sees the latest data
+    if (_userEmail != null) {
+      final idx = _pendingApprovals.indexWhere((p) => p.email == _userEmail);
+      if (idx != -1) {
+        _pendingApprovals[idx] = PendingUser(
+          email: _pendingApprovals[idx].email,
+          name: _pendingApprovals[idx].name,
+          phone: _pendingApprovals[idx].phone,
+          bookingData: _bookingData!,
+        );
+      }
+    }
+
+    notifyListeners();
+  }
+
   /// Cancel booking — revert status back to calon
   void cancelBooking() {
+    // Release the unique code back to the pool so it can be reused
+    if (_bookingData != null) {
+      releaseUniquePaymentCode(_bookingData!.uniquePaymentCode);
+    }
     _currentRole = UserRole.calon;
     _bookingData = null;
     if (_userEmail != null) {
@@ -346,6 +424,14 @@ class AuthProvider extends ChangeNotifier {
   void adminApproveUser(String email, String roomNumber) {
     final userEntry = _registeredUsers[email];
     if (userEntry == null) return;
+
+    // Release the unique code — booking is now complete, code can be reused
+    final pending = _pendingApprovals
+        .where((p) => p.email == email)
+        .firstOrNull;
+    if (pending != null) {
+      releaseUniquePaymentCode(pending.bookingData.uniquePaymentCode);
+    }
 
     userEntry['role'] = 'resident';
     userEntry['room'] = roomNumber;
@@ -367,6 +453,14 @@ class AuthProvider extends ChangeNotifier {
     final userEntry = _registeredUsers[email];
     if (userEntry == null) return;
 
+    // Release the unique code back to the pool
+    final pending = _pendingApprovals
+        .where((p) => p.email == email)
+        .firstOrNull;
+    if (pending != null) {
+      releaseUniquePaymentCode(pending.bookingData.uniquePaymentCode);
+    }
+
     userEntry['role'] = 'calon';
     userEntry.remove('room');
 
@@ -379,6 +473,22 @@ class AuthProvider extends ChangeNotifier {
       _bookingData = null;
     }
 
+    notifyListeners();
+  }
+
+  /// Check out — reverts an active resident back to calon status
+  void checkOut() {
+    // Release the unique payment code back to the pool if there's an active booking
+    if (_bookingData != null) {
+      releaseUniquePaymentCode(_bookingData!.uniquePaymentCode);
+    }
+    _currentRole = UserRole.calon;
+    _bookingData = null;
+    _assignedRoom = null;
+    if (_userEmail != null) {
+      _registeredUsers[_userEmail!]?['role'] = 'calon';
+      _registeredUsers[_userEmail!]?.remove('room');
+    }
     notifyListeners();
   }
 

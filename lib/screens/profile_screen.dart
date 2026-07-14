@@ -344,6 +344,26 @@ class ProfileScreen extends StatelessWidget {
             ),
             const SizedBox(height: 40),
 
+            // Check Out button — only for active residents (not admin)
+            if (auth.isResident && !auth.isAdmin) ...[
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _showCheckOutDialog(context, auth),
+                  icon: const Icon(Icons.logout_outlined, color: Colors.deepOrange),
+                  label: const Text('Check Out',
+                      style: TextStyle(color: Colors.deepOrange, fontWeight: FontWeight.bold)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.deepOrange, width: 1.5),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    backgroundColor: Colors.deepOrange.withOpacity(0.05),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+
             // Logout Button
             SizedBox(
               width: double.infinity,
@@ -623,6 +643,167 @@ class ProfileScreen extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showCheckOutDialog(BuildContext context, AuthProvider auth) {
+    // Step 1 — warning dialog
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: Colors.deepOrange),
+            const SizedBox(width: 8),
+            const Text('Yakin ingin Check Out?',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Dengan melakukan check out:',
+              style: TextStyle(
+                  color: Colors.grey.shade700, fontWeight: FontWeight.w600, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            _checkOutBullet('Kontrak sewa Anda akan berakhir'),
+            _checkOutBullet('Semua data booking akan dihapus'),
+            _checkOutBullet('Status akun kembali ke Calon Penghuni'),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.deepOrange.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.deepOrange.shade200),
+              ),
+              child: Text(
+                'Tindakan ini tidak dapat dibatalkan. Hubungi admin jika ada pertanyaan sebelum melanjutkan.',
+                style: TextStyle(
+                    color: Colors.deepOrange.shade800, fontSize: 12, height: 1.4),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal', style: TextStyle(color: AppTheme.textMuted)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.deepOrange,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              // Step 2 — final confirmation with reason input
+              _showCheckOutConfirmDialog(context, auth);
+            },
+            child: const Text('Lanjut'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _checkOutBullet(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('• ', style: TextStyle(color: Colors.deepOrange, fontWeight: FontWeight.bold)),
+          Expanded(
+              child: Text(text,
+                  style: TextStyle(color: Colors.grey.shade700, fontSize: 12, height: 1.4))),
+        ],
+      ),
+    );
+  }
+
+  void _showCheckOutConfirmDialog(BuildContext context, AuthProvider auth) {
+    final reasonController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Konfirmasi Check Out',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Alasan check out (opsional):',
+                style: TextStyle(color: AppTheme.textMuted, fontSize: 13)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: reasonController,
+              maxLines: 3,
+              style: const TextStyle(fontSize: 13),
+              decoration: InputDecoration(
+                hintText: 'Contoh: Pindah kerja, kontrak selesai, dsb.',
+                hintStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+                contentPadding: const EdgeInsets.all(12),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Colors.deepOrange),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              reasonController.dispose();
+              Navigator.pop(ctx);
+            },
+            child: const Text('Batal', style: TextStyle(color: AppTheme.textMuted)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade700,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () {
+              reasonController.dispose();
+              Navigator.pop(ctx);
+              // Perform check out
+              auth.checkOut();
+              // Show snackbar then navigate to login
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Check out berhasil. Terima kasih telah tinggal di Kostraktor!'),
+                  backgroundColor: Colors.deepOrange,
+                ),
+              );
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (route) => false,
+              );
+            },
+            child: const Text('KONFIRMASI CHECK OUT',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+          ),
+        ],
       ),
     );
   }
@@ -1006,4 +1187,5 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
   }
+
 }
