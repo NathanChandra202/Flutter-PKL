@@ -824,12 +824,12 @@ class AuthProvider extends ChangeNotifier {
   }
 
   UserRole _parseRole(String role) {
-    switch (role) {
+    switch (role.toLowerCase()) {
       case 'resident':
         return UserRole.resident;
       case 'admin':
         return UserRole.admin;
-      case 'pendingResident':
+      case 'pendingresident':
         return UserRole.pendingResident;
       default:
         return UserRole.calon;

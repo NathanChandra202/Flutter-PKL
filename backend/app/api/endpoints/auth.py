@@ -52,7 +52,7 @@ def register(user_in: UserCreate, db: Session = Depends(deps.get_db)):
     profile = UserProfile(
         user_id=user.id,
         nama_lengkap=user_in.nama_lengkap,
-        nik=user_in.nik
+        nik=user_in.nik if user_in.nik else None
     )
     db.add(profile)
     db.commit()
