@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../utils/app_theme.dart';
 import '../providers/auth_provider.dart';
 import 'detail_screen.dart';
@@ -72,9 +73,19 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark);
     final filtered = _filteredUnits;
+    final auth = Provider.of<AuthProvider>(context);
 
     return Scaffold(
       backgroundColor: AppTheme.bgWhite,
+      // FAB WA — sembunyikan untuk admin
+      floatingActionButton: auth.isAdmin
+          ? null
+          : FloatingActionButton(
+              onPressed: () => _showWaSheet(context),
+              backgroundColor: const Color(0xFF25D366),
+              tooltip: 'Hubungi Admin via WhatsApp',
+              child: const Icon(Icons.chat, color: Colors.white),
+            ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -277,6 +288,129 @@ class _HomeScreenState extends State<HomeScreen> {
                       itemCount: filtered.length,
                       itemBuilder: (context, i) => _UnitCard(unit: filtered[i]),
                     ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _launchWa(BuildContext context, String message) async {
+    final encoded = Uri.encodeComponent('$message\n\n(via Kostraktor App)');
+    final url = Uri.parse('https://wa.me/6281234567890?text=$encoded');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Tidak dapat membuka WhatsApp. Hubungi 081234567890')),
+      );
+    }
+  }
+
+  void _showWaSheet(BuildContext context) {
+    const templates = [
+      'Halo, saya ingin tanya informasi kamar yang tersedia',
+      'Halo, saya ingin tanya soal harga dan fasilitas',
+      'Halo, saya ingin jadwalkan kunjungan ke kos',
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Center(
+              child: Container(
+                width: 64, height: 64,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF25D366),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.chat, color: Colors.white, size: 32),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Hubungi Admin Kostraktor',
+              style: TextStyle(
+                  color: AppTheme.primaryBlack,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Tanya-tanya dulu sebelum sewa? Kami siap bantu!',
+              style: TextStyle(
+                  color: AppTheme.textMuted, fontSize: 13, height: 1.4),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            const Text('Pilih template pesan:',
+                style: TextStyle(
+                    color: AppTheme.primaryBlack,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13)),
+            const SizedBox(height: 10),
+            ...templates.map((msg) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _launchWa(context, msg);
+                    },
+                    icon: const Icon(Icons.send, size: 15),
+                    label: Text(msg,
+                        style: const TextStyle(fontSize: 12),
+                        textAlign: TextAlign.left),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF25D366),
+                      side: const BorderSide(color: Color(0xFF25D366)),
+                      alignment: Alignment.centerLeft,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                )),
+            const SizedBox(height: 4),
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _launchWa(context,
+                    'Halo Admin Kostraktor, saya ingin bertanya');
+              },
+              icon: const Icon(Icons.edit_outlined, size: 16),
+              label: const Text('Tulis Pesan Sendiri',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.primaryBlack,
+                side: const BorderSide(color: AppTheme.primaryBlack),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
             ),
           ],
         ),

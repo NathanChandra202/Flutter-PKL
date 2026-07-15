@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import '../utils/app_theme.dart';
 import '../providers/auth_provider.dart';
@@ -71,6 +72,16 @@ class DetailScreen extends StatelessWidget {
                 ),
               ),
             ),
+            actions: [
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: IconButton(
+                  icon: const Icon(Icons.share_outlined, color: Colors.white),
+                  tooltip: 'Bagikan',
+                  onPressed: () => _showShareSheet(context, title, price),
+                ),
+              ),
+            ],
             flexibleSpace: FlexibleSpaceBar(
               background: Stack(
                 fit: StackFit.expand,
@@ -236,102 +247,9 @@ class DetailScreen extends StatelessWidget {
                 const SizedBox(height: 24),
                 const _Divider(),
 
-                // Map Section
-                const _SectionTitle('Lokasi'),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        height: 200,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: Stack(
-                            children: [
-                              Container(
-                                color: Colors.grey.shade200,
-                                child: Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.location_on,
-                                        size: 48,
-                                        color: AppTheme.accentGold,
-                                      ),
-                                      const SizedBox(height: 8),
-                                      const Text(
-                                        'Pasar Rebo, Jakarta Timur',
-                                        style: TextStyle(
-                                          color: AppTheme.primaryBlack,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Tap untuk buka di Maps',
-                                        style: TextStyle(
-                                          color: AppTheme.textMuted,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              Positioned.fill(
-                                child: Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    onTap: () async {
-                                      const lat = -6.3167;
-                                      const lng = 106.8667;
-                                      final url = Uri.parse(
-                                        'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
-                                      );
-                                      if (await canLaunchUrl(url)) {
-                                        await launchUrl(
-                                          url,
-                                          mode: LaunchMode.externalApplication,
-                                        );
-                                      }
-                                    },
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.location_on,
-                            size: 16,
-                            color: AppTheme.accentGold,
-                          ),
-                          const SizedBox(width: 6),
-                          const Expanded(
-                            child: Text(
-                              'Jl. Raya Bogor, Pasar Rebo, Jakarta Timur',
-                              style: TextStyle(
-                                color: AppTheme.textMuted,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+                // Lokasi & Transportasi
+                const _SectionTitle('Lokasi & Transportasi'),
+                const _LocationTransportSection(),
 
                 const SizedBox(height: 24),
                 const _Divider(),
@@ -1025,6 +943,146 @@ class DetailScreen extends StatelessWidget {
       ),
     );
   }
+
+  // ─── Share Sheet ──────────────────────────────────────────────────────────
+  void _showShareSheet(BuildContext context, String title, String price) {
+    final shareText =
+        'Cek hunian $title di Kostraktor!\n'
+        'Lokasi: Jl. H. Hasan No.36, Pasar Rebo, Jakarta Timur\n'
+        'Harga: $price/bulan\n\n'
+        'Kostraktor - Hunian Premium Jakarta Timur';
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Bagikan Hunian',
+              style: TextStyle(
+                color: AppTheme.primaryBlack,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(title,
+                style: const TextStyle(color: AppTheme.textMuted, fontSize: 13)),
+            const SizedBox(height: 20),
+            _shareOption(
+              context,
+              icon: Icons.copy_outlined,
+              color: Colors.blueGrey,
+              label: 'Salin Teks',
+              subtitle: 'Salin info hunian ke clipboard',
+              onTap: () async {
+                await Clipboard.setData(ClipboardData(text: shareText));
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Teks berhasil disalin!')),
+                  );
+                }
+              },
+            ),
+            const SizedBox(height: 10),
+            _shareOption(
+              context,
+              icon: Icons.chat_outlined,
+              color: Colors.green,
+              label: 'Bagikan via WhatsApp',
+              subtitle: 'Buka WhatsApp dengan pesan siap kirim',
+              onTap: () async {
+                final encoded = Uri.encodeComponent(shareText);
+                final uri = Uri.parse('https://wa.me/?text=$encoded');
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
+                if (context.mounted) Navigator.pop(context);
+              },
+            ),
+            const SizedBox(height: 10),
+            _shareOption(
+              context,
+              icon: Icons.share_outlined,
+              color: AppTheme.accentGold,
+              label: 'Bagikan ke Aplikasi Lain',
+              subtitle: 'Gunakan menu berbagi sistem',
+              onTap: () async {
+                Navigator.pop(context);
+                await Share.share(shareText, subject: 'Hunian $title - Kostraktor');
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _shareOption(
+    BuildContext context, {
+    required IconData icon,
+    required Color color,
+    required String label,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label,
+                      style: const TextStyle(
+                          color: AppTheme.primaryBlack,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13)),
+                  Text(subtitle,
+                      style: const TextStyle(
+                          color: AppTheme.textMuted, fontSize: 11)),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, color: Colors.grey.shade400),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -1246,4 +1304,282 @@ class _ReviewCard extends StatelessWidget {
       ],
     ),
   );
+}
+
+// ─── Lokasi & Transportasi ────────────────────────────────────────────────────
+
+class _LocationTransportSection extends StatelessWidget {
+  const _LocationTransportSection();
+
+  static const _address =
+      'Jl. H. Hasan No.36, RT.2/RW.9, Pasar Rebo, Jakarta Timur 13780';
+  static const _lat = -6.3141;
+  static const _lng = 106.8710;
+
+  static const _transports = [
+    _TransportInfo(
+      icon: Icons.directions_walk,
+      color: Colors.teal,
+      mode: 'Jalan Kaki',
+      distance: '± 0.5 km dari Halte Pasar Rebo',
+      duration: '~7 menit',
+      note: 'Dari Halte TransJakarta Pasar Rebo',
+      mapsMode: 'walking',
+    ),
+    _TransportInfo(
+      icon: Icons.directions_bike,
+      color: Colors.green,
+      mode: 'Motor / Ojol',
+      distance: '± 8 km dari Pusat Jakarta',
+      duration: '~20–35 menit',
+      note: 'Gojek / Grab tersedia di area ini',
+      mapsMode: 'driving',
+    ),
+    _TransportInfo(
+      icon: Icons.directions_car,
+      color: Colors.blue,
+      mode: 'Mobil',
+      distance: '± 8 km dari Pusat Jakarta',
+      duration: '~25–45 menit',
+      note: 'Akses via Jl. Raya Bogor & TB Simatupang',
+      mapsMode: 'driving',
+    ),
+    _TransportInfo(
+      icon: Icons.directions_bus,
+      color: Colors.orange,
+      mode: 'TransJakarta',
+      distance: 'Koridor 7 / 7C',
+      duration: '~30–50 menit dari Harmoni',
+      note: 'Turun Halte Pasar Rebo, jalan ± 500m',
+      mapsMode: 'transit',
+    ),
+    _TransportInfo(
+      icon: Icons.train,
+      color: Colors.purple,
+      mode: 'KRL Commuter Line',
+      distance: '± 4 km dari Stasiun Pasar Minggu',
+      duration: '~10 menit ojol dari stasiun',
+      note: 'Stasiun Pasar Minggu → ojol ke lokasi',
+      mapsMode: 'transit',
+    ),
+  ];
+
+  Future<void> _openMaps(BuildContext context, String mode) async {
+    final uri = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1'
+      '&destination=$_lat,$_lng&travelmode=$mode',
+    );
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tidak dapat membuka Google Maps.')),
+      );
+    }
+  }
+
+  Future<void> _openPinpoint(BuildContext context) async {
+    final uri = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$_lat,$_lng',
+    );
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ── Alamat ──
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.red.shade200),
+                      ),
+                      child: Icon(Icons.location_on,
+                          color: Colors.red.shade600, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Alamat Lengkap',
+                              style: TextStyle(
+                                  color: AppTheme.textMuted,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold)),
+                          SizedBox(height: 4),
+                          Text(_address,
+                              style: TextStyle(
+                                  color: AppTheme.primaryBlack,
+                                  fontSize: 13,
+                                  height: 1.5,
+                                  fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryBlack,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                    icon: const Icon(Icons.map_outlined, size: 18),
+                    label: const Text('Lihat di Google Maps',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 13)),
+                    onPressed: () => _openPinpoint(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          const Text('Pilihan Transportasi',
+              style: TextStyle(
+                  color: AppTheme.primaryBlack,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          const Text('Ketuk untuk navigasi di Google Maps',
+              style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+          const SizedBox(height: 12),
+
+          // ── List transportasi ──
+          ..._transports.map((t) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: GestureDetector(
+                  onTap: () => _openMaps(context, t.mapsMode),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade200),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.02),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: t.color.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                                color: t.color.withValues(alpha: 0.3)),
+                          ),
+                          child: Icon(t.icon, color: t.color, size: 20),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(t.mode,
+                                  style: const TextStyle(
+                                      color: AppTheme.primaryBlack,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13)),
+                              const SizedBox(height: 2),
+                              Text(t.distance,
+                                  style: TextStyle(
+                                      color: t.color,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600)),
+                              Text(t.note,
+                                  style: const TextStyle(
+                                      color: AppTheme.textMuted,
+                                      fontSize: 11,
+                                      height: 1.4)),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: t.color.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(t.duration,
+                                  style: TextStyle(
+                                      color: t.color,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold)),
+                            ),
+                            const SizedBox(height: 4),
+                            Icon(Icons.open_in_new,
+                                size: 13, color: Colors.grey.shade400),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              )),
+        ],
+      ),
+    );
+  }
+}
+
+class _TransportInfo {
+  final IconData icon;
+  final Color color;
+  final String mode;
+  final String distance;
+  final String duration;
+  final String note;
+  final String mapsMode;
+
+  const _TransportInfo({
+    required this.icon,
+    required this.color,
+    required this.mode,
+    required this.distance,
+    required this.duration,
+    required this.note,
+    required this.mapsMode,
+  });
 }
