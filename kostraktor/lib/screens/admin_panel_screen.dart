@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../utils/app_theme.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
+import 'manage_rooms_screen.dart';
 
 class AdminPanelScreen extends StatefulWidget {
   const AdminPanelScreen({super.key});
@@ -190,6 +191,16 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.meeting_room_outlined, color: Colors.white),
+                    tooltip: 'Kelola Kamar',
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ManageRoomsScreen()),
+                      );
+                    },
                   ),
                   IconButton(
                     icon: const Icon(Icons.logout, color: Colors.redAccent),

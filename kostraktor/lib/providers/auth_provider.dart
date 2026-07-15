@@ -497,9 +497,10 @@ class AuthProvider extends ChangeNotifier {
 
   // ─── Rooms API ────────────────────────────────────────────────────────────
 
-  Future<List<Map<String, dynamic>>> fetchRooms() async {
+  Future<List<Map<String, dynamic>>> fetchRooms({bool all = false}) async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/rooms/'));
+      final url = all ? '$_baseUrl/rooms/?all=true' : '$_baseUrl/rooms/';
+      final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         return data.cast<Map<String, dynamic>>();
@@ -508,6 +509,44 @@ class AuthProvider extends ChangeNotifier {
       print('Error fetching rooms: $e');
     }
     return [];
+  }
+
+  Future<bool> createRoom(Map<String, dynamic> data) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/rooms/'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(data),
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      print('Error creating room: $e');
+      return false;
+    }
+  }
+
+  Future<bool> updateRoom(int id, Map<String, dynamic> data) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$_baseUrl/rooms/$id'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(data),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Error updating room: $e');
+      return false;
+    }
+  }
+
+  Future<bool> deleteRoom(int id) async {
+    try {
+      final response = await http.delete(Uri.parse('$_baseUrl/rooms/$id'));
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Error deleting room: $e');
+      return false;
+    }
   }
 
   // ─── Tools API ───────────────────────────────────────────────────────────

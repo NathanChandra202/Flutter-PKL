@@ -8,24 +8,82 @@ from app.models.kost import KostRoom
 
 router = APIRouter()
 
-class RoomResponse(BaseModel):
-    id: int
+class RoomBase(BaseModel):
     name: str
     description: str
     price_per_month: float
-    is_available: bool
+    is_available: bool = True
     image_url: Optional[str] = None
     facilities: Optional[str] = None
     room_type: Optional[str] = None
+
+class RoomCreate(RoomBase):
+    pass
+
+class RoomUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    price_per_month: Optional[float] = None
+    is_available: Optional[bool] = None
+    image_url: Optional[str] = None
+    facilities: Optional[str] = None
+    room_type: Optional[str] = None
+
+class RoomResponse(RoomBase):
+    id: int
 
     class Config:
         orm_mode = True
         from_attributes = True
 
 @router.get("/", response_model=List[RoomResponse])
-def get_rooms(db: Session = Depends(deps.get_db)):
-    rooms = db.query(KostRoom).filter(KostRoom.is_available == True).all()
+def get_rooms(all: bool = False, db: Session = Depends(deps.get_db)):
+    if all:
+        rooms = db.query(KostRoom).order_by(KostRoom.id).all()
+    else:
+        rooms = db.query(KostRoom).filter(KostRoom.is_available == True).order_by(KostRoom.id).all()
     return rooms
+
+@router.post("/", response_model=RoomResponse)
+def create_room(room_in: RoomCreate, db: Session = Depends(deps.get_db)):
+    new_room = KostRoom(
+        name=room_in.name,
+        description=room_in.description,
+        price_per_month=room_in.price_per_month,
+        is_available=room_in.is_available,
+        image_url=room_in.image_url,
+        facilities=room_in.facilities,
+        room_type=room_in.room_type
+    )
+    db.add(new_room)
+    db.commit()
+    db.refresh(new_room)
+    return new_room
+
+@router.put("/{room_id}", response_model=RoomResponse)
+def update_room(room_id: int, room_in: RoomUpdate, db: Session = Depends(deps.get_db)):
+    room = db.query(KostRoom).filter(KostRoom.id == room_id).first()
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+    
+    update_data = room_in.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(room, field, value)
+        
+    db.commit()
+    db.refresh(room)
+    return room
+
+@router.delete("/{room_id}")
+def delete_room(room_id: int, db: Session = Depends(deps.get_db)):
+    room = db.query(KostRoom).filter(KostRoom.id == room_id).first()
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+    
+    # Soft delete
+    room.is_available = False
+    db.commit()
+    return {"message": "Room successfully deleted (disabled)"}
 
 @router.post("/seed")
 def seed_rooms(db: Session = Depends(deps.get_db)):
