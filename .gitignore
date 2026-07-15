@@ -1,0 +1,16 @@
+backend/venv/
+backend/__pycache__/
+backend/.pytest_cache/
+backend/app.db
+*.pyc
+.env
+.DS_Store
+
+# Flutter
+kostraktor/build/
+kostraktor/.dart_tool/
+kostraktor/.packages
+kostraktor/.pub-cache/
+kostraktor/.pub/
+kostraktor/.flutter-plugins
+kostraktor/.flutter-plugins-dependencies
