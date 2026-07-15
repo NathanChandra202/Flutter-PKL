@@ -571,11 +571,12 @@ class _CountdownScreenState extends State<CountdownScreen> {
                 child: Text(
                   rekening,
                   style: const TextStyle(
-                    fontSize: 22,
-                    letterSpacing: 1.5,
+                    fontSize: 20,
+                    letterSpacing: 1.2,
                     fontWeight: FontWeight.w900,
                     color: AppTheme.primaryBlack,
                   ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               const SizedBox(width: 8),

@@ -588,25 +588,32 @@ class _ToolShareScreenState extends State<ToolShareScreen> {
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
                       ),
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        // Update status alat jadi dipinjam
-                        setState(() => _toolStatus[title] = false);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('$title berhasil dipinjam! Kembalikan dalam 2 jam.'),
-                            backgroundColor: Colors.green.shade700,
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10)),
-                          ),
-                        );
-                      },
+                      onPressed: scanBytes == null
+                          ? null
+                          : () {
+                              Navigator.pop(ctx);
+                              // Update status alat jadi dipinjam
+                              setState(() => _toolStatus[title] = false);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('$title berhasil dipinjam! Kembalikan dalam 2 jam.'),
+                                  backgroundColor: Colors.green.shade700,
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10)),
+                                ),
+                              );
+                            },
                       child: const Text('Pinjam Sekarang',
                           style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ),
                   const SizedBox(height: 8),
+                  Text(
+                    scanBytes == null ? 'Foto kondisi barang wajib diambil sebelum meminjam.' : '',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.red.shade400, fontSize: 11),
+                  ),
                   TextButton(
                     onPressed: () => Navigator.pop(ctx),
                     child: const Text('Batal',

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/liquid_background.dart';
 import 'onboarding_screen.dart';
 import 'main_navigation.dart';
 import 'admin_panel_screen.dart';
@@ -64,34 +65,36 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Center(
-        child: FadeTransition(
-          opacity: _fade,
-          child: SlideTransition(
-            position: _slide,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Logo from CDN
-                Image.network(
-                  'https://tesmohamadasep.sirv.com/duaenam-grp-source/assets/logo/kostraktor.jpeg',
-                  width: 200,
-                  errorBuilder: (_, __, ___) => const Text(
-                    'Kostraktor',
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 36,
-                      letterSpacing: -1.0,
+      body: LiquidBackground(
+        child: Center(
+          child: FadeTransition(
+            opacity: _fade,
+            child: SlideTransition(
+              position: _slide,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Logo from CDN
+                  Image.network(
+                    'https://tesmohamadasep.sirv.com/duaenam-grp-source/assets/logo/kostraktor.jpeg',
+                    width: 200,
+                    errorBuilder: (_, __, ___) => const Text(
+                      'Kostraktor',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 36,
+                        letterSpacing: -1.0,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Premium Boarding House Jakarta Timur',
-                  style: TextStyle(color: Color(0xFF888888), fontSize: 13),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Premium Boarding House Jakarta Timur',
+                    style: TextStyle(color: Color(0xFF888888), fontSize: 13),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

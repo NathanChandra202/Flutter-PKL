@@ -350,14 +350,22 @@ class ProfileScreen extends StatelessWidget {
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: () => _showCheckOutDialog(context, auth),
-                  icon: const Icon(Icons.logout_outlined, color: Colors.deepOrange),
+                  icon: const Icon(Icons.logout_outlined,
+                      color: Colors.deepOrange, size: 18),
                   label: const Text('Check Out',
-                      style: TextStyle(color: Colors.deepOrange, fontWeight: FontWeight.bold)),
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          color: Colors.deepOrange,
+                          fontWeight: FontWeight.bold)),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.deepOrange, width: 1.5),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    backgroundColor: Colors.deepOrange.withOpacity(0.05),
+                    side: const BorderSide(
+                        color: Colors.deepOrange, width: 1.5),
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 16, horizontal: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    backgroundColor:
+                        Colors.deepOrange.withValues(alpha: 0.05),
                   ),
                 ),
               ),
@@ -657,8 +665,12 @@ class ProfileScreen extends StatelessWidget {
           children: [
             const Icon(Icons.warning_amber_rounded, color: Colors.deepOrange),
             const SizedBox(width: 8),
-            const Text('Yakin ingin Check Out?',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const Expanded(
+              child: Text(
+                'Yakin ingin Check Out?',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ),
           ],
         ),
         content: Column(

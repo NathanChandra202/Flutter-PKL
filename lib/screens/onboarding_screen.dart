@@ -50,138 +50,159 @@ class OnboardingScreen extends StatelessWidget {
 
           // Content
           SafeArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // ─── Logo / Brand ───
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(28, 24, 28, 0),
-                  child: Row(
-                    children: [
-                      _KostraktorLogo(size: 36),
-                    ],
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final hPad = constraints.maxWidth < 360 ? 20.0 : 28.0;
+                final titleSize = constraints.maxWidth < 360 ? 28.0 : 36.0;
+
+                return SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight,
+                    ),
+                    child: IntrinsicHeight(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // ─── Logo / Brand ───
+                          Padding(
+                            padding: EdgeInsets.fromLTRB(hPad, 24, hPad, 0),
+                            child: Row(
+                              children: [
+                                _KostraktorLogo(size: 36),
+                              ],
+                            ),
+                          ),
+
+                          // Push content to bottom
+                          const Spacer(),
+
+                          // ─── Bottom content ───
+                          Padding(
+                            padding: EdgeInsets.fromLTRB(hPad, 0, hPad, 20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Tagline
+                                Text(
+                                  'Ng\'Kost\nNyaman,\nHarga Aman.',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: titleSize,
+                                    fontWeight: FontWeight.w800,
+                                    height: 1.15,
+                                    letterSpacing: -0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                const Text(
+                                  'Hunian premium berkualitas konstruktor\ndi kawasan strategis Jakarta Timur.',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 14,
+                                    height: 1.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                // Starting price badge
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 14, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.accentGold,
+                                    borderRadius: BorderRadius.circular(100),
+                                  ),
+                                  child: const Text(
+                                    'Mulai dari Rp 800.000 / bulan',
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+
+                                // Facilities row
+                                _FacilityRow(),
+                                const SizedBox(height: 20),
+
+                                // CTA Button
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.white,
+                                      foregroundColor: Colors.black,
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 16),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(14),
+                                      ),
+                                      elevation: 0,
+                                    ),
+                                    onPressed: () {
+                                      Navigator.pushReplacement(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (_) => const HomeScreen()),
+                                      );
+                                    },
+                                    child: const Text(
+                                      'Jelajahi Kamar Kos',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+
+                                // Secondary CTA — Masuk Akun
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton(
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: Colors.white,
+                                      side: const BorderSide(
+                                          color: Colors.white54, width: 1.5),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 14),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(14),
+                                      ),
+                                    ),
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (_) => const LoginScreen()),
+                                      );
+                                    },
+                                    child: const Text(
+                                      'Masuk Akun',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-
-                const Spacer(),
-
-                // ─── Bottom content ───
-                Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    MediaQuery.of(context).size.width < 360 ? 20 : 28,
-                    0,
-                    MediaQuery.of(context).size.width < 360 ? 20 : 28,
-                    40,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Tagline
-                      Text(
-                        'Ng\'Kost\nNyaman,\nHarga Aman.',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: MediaQuery.of(context).size.width < 360 ? 32 : 40,
-                          fontWeight: FontWeight.w800,
-                          height: 1.15,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Hunian premium berkualitas konstruktor\ndi kawasan strategis Jakarta Timur.',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 15,
-                          height: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      // Starting price badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppTheme.accentGold,
-                          borderRadius: BorderRadius.circular(100),
-                        ),
-                        child: const Text(
-                          'Mulai dari Rp 800.000 / bulan',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-
-                      // Facilities row
-                      _FacilityRow(),
-                      const SizedBox(height: 32),
-
-                      // CTA Button
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(vertical: 18),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            elevation: 0,
-                          ),
-                          onPressed: () {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(builder: (_) => const HomeScreen()),
-                            );
-                          },
-                          child: const Text(
-                            'Jelajahi Kamar Kos',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              letterSpacing: 0.3,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-
-                      // Secondary CTA — Masuk Akun button
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            side: const BorderSide(color: Colors.white54, width: 1.5),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const LoginScreen()),
-                            );
-                          },
-                          child: const Text(
-                            'Masuk Akun',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                              letterSpacing: 0.3,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                );
+              },
             ),
           ),
         ],
