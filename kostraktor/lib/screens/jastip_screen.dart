@@ -6,6 +6,8 @@ import '../providers/auth_provider.dart';
 import 'tool_share_screen.dart';
 
 class _JastipItem {
+  final int? id;
+  final int? userId;
   final String title;
   final String desc;
   final String author;
@@ -14,6 +16,8 @@ class _JastipItem {
   final DateTime postedAt;
 
   _JastipItem({
+    this.id,
+    this.userId,
     required this.title,
     required this.desc,
     required this.author,
@@ -31,30 +35,44 @@ class JastipScreen extends StatefulWidget {
 }
 
 class _JastipScreenState extends State<JastipScreen> {
-  final List<_JastipItem> _listings = [
-    _JastipItem(
-      title: 'Jastip Warmindo jam 10 malam',
-      desc: 'Mumpung hujan, ongkir hanya Rp 2.000, slot terbatas 3 orang saja',
-      author: 'Kamar 105',
-      harga: 'Rp 2.000',
-      waNumber: '6281234500105',
-      postedAt: DateTime.now().subtract(const Duration(hours: 2)),
-    ),
-    _JastipItem(
-      title: 'Jasa Pembersihan & Cuci Sneakers',
-      desc: 'Premium deep clean selesai 1 hari',
-      author: 'Kamar 202',
-      harga: 'Rp 15.000',
-      waNumber: '6281234500202',
-      postedAt: DateTime.now().subtract(const Duration(days: 1)),
-    ),
-  ];
+  List<Map<String, dynamic>> _listings = [];
+  bool _isLoading = true;
 
-  void _addListing(_JastipItem item) {
-    setState(() => _listings.insert(0, item));
+  @override
+  void initState() {
+    super.initState();
+    _loadListings();
   }
 
-  String _timeAgo(DateTime dt) {
+  Future<void> _loadListings() async {
+    setState(() => _isLoading = true);
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final data = await auth.fetchJastipListings();
+    if (mounted) {
+      setState(() {
+        _listings = data;
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _addListing(String title, String desc, String price, String wa) async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final result = await auth.createJastipListing(
+      title: title,
+      description: desc,
+      price: price,
+      waNumber: wa,
+    );
+    if (result != null) {
+      await _loadListings();
+    }
+  }
+
+  String _timeAgo(String? isoStr) {
+    if (isoStr == null) return '';
+    final dt = DateTime.tryParse(isoStr);
+    if (dt == null) return '';
     final diff = DateTime.now().difference(dt);
     if (diff.inMinutes < 1) return 'Baru saja';
     if (diff.inHours < 1) return '${diff.inMinutes} menit lalu';
@@ -110,40 +128,38 @@ class _JastipScreenState extends State<JastipScreen> {
           ),
 
           Expanded(
-            child: _listings.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.storefront_outlined,
-                            size: 56, color: Colors.grey.shade300),
-                        const SizedBox(height: 12),
-                        const Text('Belum ada listing jastip.',
-                            style: TextStyle(
-                                color: AppTheme.textMuted, fontSize: 14)),
-                        const SizedBox(height: 6),
-                        const Text('Jadi yang pertama buka lapak!',
-                            style: TextStyle(
-                                color: AppTheme.textMuted, fontSize: 12)),
-                      ],
-                    ),
-                  )
-                : ListView.separated(
-                    padding:
-                        const EdgeInsets.fromLTRB(20, 20, 20, 120),
-                    itemCount: _listings.length,
-                    separatorBuilder: (_, __) =>
-                        const SizedBox(height: 14),
-                    itemBuilder: (context, i) {
-                      final item = _listings[i];
-                      return _buildJastipCard(
-                        context,
-                        item,
-                        _timeAgo(item.postedAt),
-                        auth,
-                      );
-                    },
-                  ),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _listings.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.storefront_outlined,
+                                size: 56, color: Colors.grey.shade300),
+                            const SizedBox(height: 12),
+                            const Text('Belum ada listing jastip.',
+                                style: TextStyle(
+                                    color: AppTheme.textMuted, fontSize: 14)),
+                            const SizedBox(height: 6),
+                            const Text('Jadi yang pertama buka lapak!',
+                                style: TextStyle(
+                                    color: AppTheme.textMuted, fontSize: 12)),
+                          ],
+                        ),
+                      )
+                    : RefreshIndicator(
+                        onRefresh: _loadListings,
+                        child: ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
+                          itemCount: _listings.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 14),
+                          itemBuilder: (context, i) {
+                            final item = _listings[i];
+                            return _buildJastipCardFromApi(context, item, auth);
+                          },
+                        ),
+                      ),
           ),
         ],
       ),
@@ -188,6 +204,24 @@ class _JastipScreenState extends State<JastipScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildJastipCardFromApi(BuildContext context, Map<String, dynamic> item, AuthProvider auth) {
+    return _buildJastipCard(
+      context,
+      _JastipItem(
+        title: item['title'] ?? '',
+        desc: item['description'] ?? '',
+        author: item['author_name'] ?? 'Penghuni',
+        harga: item['price'] ?? '-',
+        waNumber: item['wa_number'] ?? '',
+        postedAt: DateTime.tryParse(item['created_at'] ?? '') ?? DateTime.now(),
+        id: item['id'],
+        userId: item['user_id'],
+      ),
+      _timeAgo(item['created_at']),
+      auth,
     );
   }
 
@@ -311,28 +345,31 @@ class _JastipScreenState extends State<JastipScreen> {
               ),
               const Spacer(),
               // Only the poster (or admin) can close their listing
-              if (auth.isAdmin)
+              if (auth.isAdmin || auth.isLoggedIn)
                 GestureDetector(
-                  onTap: () {
-                    setState(() => _listings.remove(item));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content:
-                            Text('Listing "${item.title}" dihapus.'),
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                      ),
-                    );
+                  onTap: () async {
+                    if (item.id != null) {
+                      await auth.deleteJastipListing(item.id!);
+                      await _loadListings();
+                    } else {
+                      setState(() => _listings.removeWhere((l) => l['id'] == item.id));
+                    }
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Listing "${item.title}" dihapus.'),
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      );
+                    }
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.red.shade50,
                       borderRadius: BorderRadius.circular(6),
-                      border:
-                          Border.all(color: Colors.red.shade200),
+                      border: Border.all(color: Colors.red.shade200),
                     ),
                     child: Text('Hapus',
                         style: TextStyle(
@@ -352,7 +389,7 @@ class _JastipScreenState extends State<JastipScreen> {
 // ─── Buka Lapak Bottom Sheet ───────────────────────────────────────────────
 
 class _BukaLapakSheet extends StatefulWidget {
-  final void Function(_JastipItem) onSubmit;
+  final Future<void> Function(String title, String desc, String price, String wa) onSubmit;
   const _BukaLapakSheet({required this.onSubmit});
 
   @override
@@ -437,7 +474,7 @@ class _BukaLapakSheetState extends State<_BukaLapakSheet> {
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
-                onPressed: () {
+                onPressed: () async {
                   final judul = _judulCtrl.text.trim();
                   final desk = _deskCtrl.text.trim();
                   final harga = _hargaCtrl.text.trim();
@@ -462,27 +499,22 @@ class _BukaLapakSheetState extends State<_BukaLapakSheet> {
                     return;
                   }
 
-                  final newItem = _JastipItem(
-                    title: judul,
-                    desc: desk,
-                    author: kamar,
-                    harga: harga,
-                    waNumber: wa,
-                    postedAt: DateTime.now(),
-                  );
+
 
                   Navigator.pop(context);
-                  widget.onSubmit(newItem);
+                  await widget.onSubmit(judul, desk, harga, wa);
 
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Lapak jastip berhasil dibuka!'),
-                      backgroundColor: Colors.green.shade700,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
-                  );
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Lapak jastip berhasil dibuka!'),
+                        backgroundColor: Colors.green.shade700,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                      ),
+                    );
+                  }
                 },
                 child: const Text('Buka Lapak Sekarang',
                     style: TextStyle(fontWeight: FontWeight.bold)),

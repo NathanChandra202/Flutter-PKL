@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     # Database
     POSTGRES_SERVER: str = "localhost"
     POSTGRES_USER: str = "Nathan"
-    POSTGRES_PASSWORD: str = "260926seP" # change accordingly
+    POSTGRES_PASSWORD: str = "260926seP"
     POSTGRES_DB: str = "kostraktor_db"
     POSTGRES_PORT: str = "5432"
     
@@ -21,6 +21,8 @@ class Settings(BaseSettings):
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
     class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
         case_sensitive = True
 
 settings = Settings()

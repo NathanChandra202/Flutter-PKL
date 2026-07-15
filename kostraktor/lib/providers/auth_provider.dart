@@ -436,6 +436,131 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  // ─── Jastip API ──────────────────────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> fetchJastipListings() async {
+    try {
+      final response = await http.get(Uri.parse('$_baseUrl/jastip/'));
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      }
+    } catch (e) {
+      print('Error fetching jastip: $e');
+    }
+    return [];
+  }
+
+  Future<Map<String, dynamic>?> createJastipListing({
+    required String title,
+    required String description,
+    required String price,
+    required String waNumber,
+  }) async {
+    if (_accessToken == null) return null;
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/jastip/'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_accessToken',
+        },
+        body: json.encode({
+          'title': title,
+          'description': description,
+          'price': price,
+          'wa_number': waNumber,
+        }),
+      );
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+    } catch (e) {
+      print('Error creating jastip: $e');
+    }
+    return null;
+  }
+
+  Future<bool> deleteJastipListing(int listingId) async {
+    if (_accessToken == null) return false;
+    try {
+      final response = await http.delete(
+        Uri.parse('$_baseUrl/jastip/$listingId'),
+        headers: {'Authorization': 'Bearer $_accessToken'},
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Error deleting jastip: $e');
+      return false;
+    }
+  }
+
+  // ─── Tools API ───────────────────────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> fetchTools() async {
+    try {
+      final response = await http.get(Uri.parse('$_baseUrl/tools/'));
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      }
+    } catch (e) {
+      print('Error fetching tools: $e');
+    }
+    return [];
+  }
+
+  Future<Map<String, dynamic>?> borrowTool(int toolId) async {
+    if (_accessToken == null) return null;
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/tools/$toolId/borrow'),
+        headers: {'Authorization': 'Bearer $_accessToken'},
+      );
+      if (response.statusCode == 200) return json.decode(response.body);
+      if (response.statusCode == 400) {
+        final error = json.decode(response.body);
+        throw Exception(error['detail']);
+      }
+    } catch (e) {
+      rethrow;
+    }
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> returnTool(int toolId) async {
+    if (_accessToken == null) return null;
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/tools/$toolId/return'),
+        headers: {'Authorization': 'Bearer $_accessToken'},
+      );
+      if (response.statusCode == 200) return json.decode(response.body);
+    } catch (e) {
+      print('Error returning tool: $e');
+    }
+    return null;
+  }
+
+  // ─── My Bookings History ──────────────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> fetchMyBookings() async {
+    if (_accessToken == null) return [];
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/bookings/me'),
+        headers: {'Authorization': 'Bearer $_accessToken'},
+      );
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      }
+    } catch (e) {
+      print('Error fetching my bookings: $e');
+    }
+    return [];
+  }
+
   /// Mark that user has sent WA confirmation to penjaga kos
   void markWaConfirmed() {
     _bookingData?.waConfirmed = true;

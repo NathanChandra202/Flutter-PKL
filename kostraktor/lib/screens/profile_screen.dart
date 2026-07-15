@@ -6,8 +6,29 @@ import '../providers/auth_provider.dart';
 import 'login_screen.dart';
 import 'admin_panel_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  List<Map<String, dynamic>> _myBookings = [];
+  bool _loadingBookings = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadBookings());
+  }
+
+  Future<void> _loadBookings() async {
+    setState(() => _loadingBookings = true);
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final data = await auth.fetchMyBookings();
+    if (mounted) setState(() { _myBookings = data; _loadingBookings = false; });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,6 +37,7 @@ class ProfileScreen extends StatelessWidget {
     if (!auth.isLoggedIn) {
       return _buildGuestView(context);
     }
+
 
     return Scaffold(
       backgroundColor: AppTheme.bgWhite,
@@ -42,6 +64,10 @@ class ProfileScreen extends StatelessWidget {
           children: [
             // Status Banner
             _buildStatusBanner(auth),
+            const SizedBox(height: 24),
+
+            // Booking History Section
+            _buildBookingHistorySection(),
             const SizedBox(height: 24),
 
             // Profile Card
@@ -446,6 +472,134 @@ class ProfileScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildBookingHistorySection() {
+    const statusColors = {
+      'PENDING': Colors.orange,
+      'APPROVED': Colors.green,
+      'REJECTED': Colors.red,
+    };
+    const statusLabels = {
+      'PENDING': 'Menunggu Konfirmasi',
+      'APPROVED': 'Disetujui',
+      'REJECTED': 'Ditolak',
+    };
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text(
+              'Riwayat Pesanan',
+              style: TextStyle(
+                color: AppTheme.primaryBlack,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            const Spacer(),
+            GestureDetector(
+              onTap: _loadBookings,
+              child: Icon(Icons.refresh, color: Colors.grey.shade400, size: 20),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (_loadingBookings)
+          const Center(child: CircularProgressIndicator())
+        else if (_myBookings.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: const Center(
+              child: Text(
+                'Belum ada riwayat pesanan.',
+                style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+              ),
+            ),
+          )
+        else
+          ...(_myBookings.map((b) {
+            final status = b['status'] ?? 'PENDING';
+            final color = statusColors[status] ?? Colors.grey;
+            final label = statusLabels[status] ?? status;
+            final startDate = b['start_date'] != null
+                ? DateTime.tryParse(b['start_date'])
+                : null;
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40, height: 40,
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(Icons.home_outlined, color: color, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          b['room_name'] ?? 'Unknown Room',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.primaryBlack,
+                            fontSize: 14,
+                          ),
+                        ),
+                        if (startDate != null)
+                          Text(
+                            'Mulai: ${startDate.day}/${startDate.month}/${startDate.year}',
+                            style: const TextStyle(color: AppTheme.textMuted, fontSize: 11),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: color.withOpacity(0.4)),
+                    ),
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          })).toList(),
+      ],
     );
   }
 
