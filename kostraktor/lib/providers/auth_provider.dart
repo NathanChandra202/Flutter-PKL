@@ -495,7 +495,23 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  // ─── Rooms API ────────────────────────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> fetchRooms() async {
+    try {
+      final response = await http.get(Uri.parse('$_baseUrl/rooms/'));
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      }
+    } catch (e) {
+      print('Error fetching rooms: $e');
+    }
+    return [];
+  }
+
   // ─── Tools API ───────────────────────────────────────────────────────────
+
 
   Future<List<Map<String, dynamic>>> fetchTools() async {
     try {

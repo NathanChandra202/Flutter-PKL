@@ -67,14 +67,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               if (_selectedUser!.id != null) {
                 await auth.updateBookingStatus(_selectedUser!.id!, 'APPROVED');
                 await auth.loadPendingBookings();
-              } else {
-                // Fallback for mock data
-                auth.adminApproveUser(
-                  _selectedUser!.email,
-                  _roomController.text.trim(),
-                );
               }
-              
               if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -124,11 +117,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               if (_selectedUser!.id != null) {
                 await auth.updateBookingStatus(_selectedUser!.id!, 'REJECTED');
                 await auth.loadPendingBookings();
-              } else {
-                // Fallback for mock data
-                auth.adminRejectUser(_selectedUser!.email);
               }
-              
               if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(

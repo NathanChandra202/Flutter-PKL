@@ -14,35 +14,40 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  static const List<Map<String, dynamic>> _allUnits = [
-    {
-      'title': 'Tipe Standard',
-      'price': 'Rp 800.000',
-      'image':
-          'https://tesmohamadasep.sirv.com/duaenam-grp-source/assets/kostraktor/kamar1.png',
-      'features': ['1 Kamar Tidur', '1 Kamar Mandi', 'WiFi', 'AC'],
-      'location': 'Pasar Rebo, Jakarta Timur',
-      'type': 'Standard',
-    },
-    {
-      'title': 'Tipe Deluxe',
-      'price': 'Rp 1.200.000',
-      'image':
-          'https://tesmohamadasep.sirv.com/duaenam-grp-source/assets/kostraktor/kamar1.png',
-      'features': ['2 Kamar Tidur', '1 Kamar Mandi', 'WiFi', 'AC'],
-      'location': 'Pasar Rebo, Jakarta Timur',
-      'type': 'Deluxe',
-    },
-    {
-      'title': 'Tipe Premium',
-      'price': 'Rp 1.800.000',
-      'image':
-          'https://tesmohamadasep.sirv.com/duaenam-grp-source/assets/kostraktor/kamar1.png',
-      'features': ['3 Kamar Tidur', '2 Kamar Mandi', 'WiFi', 'AC'],
-      'location': 'Pasar Rebo, Jakarta Timur',
-      'type': 'Premium',
-    },
-  ];
+  List<Map<String, dynamic>> _allUnits = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadRooms();
+    });
+  }
+
+  Future<void> _loadRooms() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final rooms = await auth.fetchRooms();
+    
+    if (mounted) {
+      setState(() {
+        _allUnits = rooms.map((r) {
+          return {
+            'id': r['id']?.toString() ?? '',
+            'title': r['name'] ?? 'Kamar Kost',
+            'price': 'Rp ${r['price_per_month']?.toStringAsFixed(0) ?? 0}',
+            'image': r['image_url'] ?? 'https://tesmohamadasep.sirv.com/duaenam-grp-source/assets/kostraktor/kamar1.png',
+            'features': (r['facilities'] as String?)?.split(',').map((e) => e.trim()).toList() ?? [],
+            'location': 'Pasar Rebo, Jakarta Timur',
+            'type': r['room_type'] ?? 'Standard',
+            'isAvailable': r['is_available'] ?? true,
+            'description': r['description'] ?? '',
+          };
+        }).toList();
+        _isLoading = false;
+      });
+    }
+  }
 
   String _activeFilter = 'Semua';
   String _searchQuery = '';
@@ -274,20 +279,28 @@ class _HomeScreenState extends State<HomeScreen> {
 
             // Grid
             Expanded(
-              child: filtered.isEmpty
-                  ? _buildEmptyState()
-                  : GridView.builder(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            mainAxisSpacing: 14,
-                            crossAxisSpacing: 14,
-                            childAspectRatio: 0.72,
-                          ),
-                      itemCount: filtered.length,
-                      itemBuilder: (context, i) => _UnitCard(unit: filtered[i]),
-                    ),
+              child: Builder(
+                builder: (context) {
+                  if (_isLoading) {
+                    return const Center(child: CircularProgressIndicator(color: AppTheme.primaryBlack));
+                  }
+                  if (filtered.isEmpty) {
+                    return _buildEmptyState();
+                  }
+                  return GridView.builder(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 14,
+                          crossAxisSpacing: 14,
+                          childAspectRatio: 0.72,
+                        ),
+                    itemCount: filtered.length,
+                    itemBuilder: (context, i) => _UnitCard(unit: filtered[i]),
+                  );
+                },
+              ),
             ),
           ],
         ),
