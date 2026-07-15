@@ -955,80 +955,90 @@ class DetailScreen extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
+      isScrollControlled: true,
+      builder: (_) => SafeArea(
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Bagikan Hunian',
+                  style: TextStyle(
+                    color: AppTheme.primaryBlack,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(title,
+                    style: const TextStyle(
+                        color: AppTheme.textMuted, fontSize: 13)),
+                const SizedBox(height: 20),
+                _shareOption(
+                  context,
+                  icon: Icons.copy_outlined,
+                  color: Colors.blueGrey,
+                  label: 'Salin Teks',
+                  subtitle: 'Salin info hunian ke clipboard',
+                  onTap: () async {
+                    await Clipboard.setData(ClipboardData(text: shareText));
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Teks berhasil disalin!')),
+                      );
+                    }
+                  },
+                ),
+                const SizedBox(height: 10),
+                _shareOption(
+                  context,
+                  icon: Icons.chat_outlined,
+                  color: Colors.green,
+                  label: 'Bagikan via WhatsApp',
+                  subtitle: 'Buka WhatsApp dengan pesan siap kirim',
+                  onTap: () async {
+                    final encoded = Uri.encodeComponent(shareText);
+                    final uri = Uri.parse('https://wa.me/?text=$encoded');
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri,
+                          mode: LaunchMode.externalApplication);
+                    }
+                    if (context.mounted) Navigator.pop(context);
+                  },
+                ),
+                const SizedBox(height: 10),
+                _shareOption(
+                  context,
+                  icon: Icons.share_outlined,
+                  color: AppTheme.accentGold,
+                  label: 'Bagikan ke Aplikasi Lain',
+                  subtitle: 'Gunakan menu berbagi sistem',
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await Share.share(shareText,
+                        subject: 'Hunian $title - Kostraktor');
+                  },
+                ),
+                const SizedBox(height: 8),
+              ],
             ),
-            const SizedBox(height: 20),
-            const Text(
-              'Bagikan Hunian',
-              style: TextStyle(
-                color: AppTheme.primaryBlack,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(title,
-                style: const TextStyle(color: AppTheme.textMuted, fontSize: 13)),
-            const SizedBox(height: 20),
-            _shareOption(
-              context,
-              icon: Icons.copy_outlined,
-              color: Colors.blueGrey,
-              label: 'Salin Teks',
-              subtitle: 'Salin info hunian ke clipboard',
-              onTap: () async {
-                await Clipboard.setData(ClipboardData(text: shareText));
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Teks berhasil disalin!')),
-                  );
-                }
-              },
-            ),
-            const SizedBox(height: 10),
-            _shareOption(
-              context,
-              icon: Icons.chat_outlined,
-              color: Colors.green,
-              label: 'Bagikan via WhatsApp',
-              subtitle: 'Buka WhatsApp dengan pesan siap kirim',
-              onTap: () async {
-                final encoded = Uri.encodeComponent(shareText);
-                final uri = Uri.parse('https://wa.me/?text=$encoded');
-                if (await canLaunchUrl(uri)) {
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                }
-                if (context.mounted) Navigator.pop(context);
-              },
-            ),
-            const SizedBox(height: 10),
-            _shareOption(
-              context,
-              icon: Icons.share_outlined,
-              color: AppTheme.accentGold,
-              label: 'Bagikan ke Aplikasi Lain',
-              subtitle: 'Gunakan menu berbagi sistem',
-              onTap: () async {
-                Navigator.pop(context);
-                await Share.share(shareText, subject: 'Hunian $title - Kostraktor');
-              },
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -1513,17 +1523,23 @@ class _LocationTransportSection extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(t.mode,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                       color: AppTheme.primaryBlack,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 13)),
                               const SizedBox(height: 2),
                               Text(t.distance,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                       color: t.color,
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600)),
                               Text(t.note,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                       color: AppTheme.textMuted,
                                       fontSize: 11,
@@ -1534,19 +1550,25 @@ class _LocationTransportSection extends StatelessWidget {
                         const SizedBox(width: 8),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: t.color.withValues(alpha: 0.08),
-                                borderRadius: BorderRadius.circular(6),
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 110),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: t.color.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(t.duration,
+                                    maxLines: 2,
+                                    textAlign: TextAlign.end,
+                                    style: TextStyle(
+                                        color: t.color,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold)),
                               ),
-                              child: Text(t.duration,
-                                  style: TextStyle(
-                                      color: t.color,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold)),
                             ),
                             const SizedBox(height: 4),
                             Icon(Icons.open_in_new,
