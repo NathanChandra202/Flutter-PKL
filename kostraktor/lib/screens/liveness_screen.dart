@@ -1,11 +1,10 @@
-import 'dart:math';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../utils/app_theme.dart';
- 
-/// Result returned when liveness check completes
+
+/// Result returned when selfie check completes
 class LivenessResult {
   final Uint8List? ktpBytes;
   final Uint8List? selfieBytes;
@@ -26,49 +25,20 @@ class LivenessScreen extends StatefulWidget {
   State<LivenessScreen> createState() => _LivenessScreenState();
 }
 
-class _LivenessScreenState extends State<LivenessScreen>
-    with SingleTickerProviderStateMixin {
+class _LivenessScreenState extends State<LivenessScreen> {
   final _picker = ImagePicker();
 
-  // Steps: 0 = KTP, 1 = instruction, 2 = selfie, 3 = result
+  // Steps: 0 = KTP, 1 = selfie, 2 = result
   int _step = 0;
 
   Uint8List? _ktpBytes;
   Uint8List? _selfieBytes;
-
-  late final String _challenge;
-  bool _isProcessing = false;
-
-  late final AnimationController _pulseCtrl;
-  late final Animation<double> _pulseAnim;
-
-  static const _challenges = [
-    'Lihat ke kamera dan SENYUM',
-    'Lihat ke kamera dan BERKEDIP 2x',
-    'Lihat ke kamera dan MENGANGGUK pelan',
-  ];
 
   @override
   void initState() {
     super.initState();
     _ktpBytes = widget.ktpBytes;
     if (_ktpBytes != null) _step = 1;
-
-    _challenge = _challenges[Random().nextInt(_challenges.length)];
-
-    _pulseCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..repeat(reverse: true);
-    _pulseAnim = Tween<double>(begin: 1.0, end: 1.06).animate(
-      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _pulseCtrl.dispose();
-    super.dispose();
   }
 
   Future<void> _pickKtp({bool gallery = false}) async {
@@ -83,6 +53,20 @@ class _LivenessScreenState extends State<LivenessScreen>
     setState(() {
       _ktpBytes = watermarked;
       _step = 1;
+    });
+  }
+
+  Future<void> _pickSelfie({bool gallery = false}) async {
+    final picked = await _picker.pickImage(
+      source: gallery ? ImageSource.gallery : ImageSource.camera,
+      imageQuality: 85,
+      preferredCameraDevice: CameraDevice.front,
+    );
+    if (picked == null) return;
+    final rawBytes = await picked.readAsBytes();
+    setState(() {
+      _selfieBytes = rawBytes;
+      _step = 2;
     });
   }
 
@@ -141,35 +125,6 @@ class _LivenessScreenState extends State<LivenessScreen>
     return byteData!.buffer.asUint8List();
   }
 
-  Future<void> _takeSelfie() async {
-    final picked = await _picker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 85,
-      preferredCameraDevice: CameraDevice.front,
-    );
-    if (picked == null) return;
-    final bytes = await picked.readAsBytes();
-    setState(() {
-      _selfieBytes = bytes;
-      _isProcessing = true;
-    });
-
-    // Simulate liveness processing
-    await Future.delayed(const Duration(milliseconds: 1500));
-    if (!mounted) return;
-    setState(() {
-      _isProcessing = false;
-      _step = 3;
-    });
-  }
-
-  void _retake() {
-    setState(() {
-      _selfieBytes = null;
-      _step = 2;
-    });
-  }
-
   void _confirm() {
     Navigator.pop(
       context,
@@ -211,9 +166,8 @@ class _LivenessScreenState extends State<LivenessScreen>
   Widget _buildStep() {
     switch (_step) {
       case 0: return _buildKtpStep();
-      case 1: return _buildInstructionStep();
-      case 2: return _buildSelfieStep();
-      case 3: return _buildResultStep();
+      case 1: return _buildSelfieStep();
+      case 2: return _buildResultStep();
       default: return _buildKtpStep();
     }
   }
@@ -339,7 +293,7 @@ class _LivenessScreenState extends State<LivenessScreen>
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: () => setState(() => _step = 1),
-              child: const Text('Lanjut ke Verifikasi Wajah',
+              child: const Text('Lanjut ke Foto Selfie',
                   style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
@@ -348,104 +302,7 @@ class _LivenessScreenState extends State<LivenessScreen>
     );
   }
 
-  // ─── Step 1: Instruction ──────────────────────────────────────────────────
-
-  Widget _buildInstructionStep() {
-    return SingleChildScrollView(
-      key: const ValueKey('instruction'),
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildStepHeader(
-            step: '2 / 2',
-            title: 'Verifikasi Wajah (Liveness)',
-            subtitle: 'Kami perlu memastikan kamu adalah orang yang memegang KTP tersebut.',
-            icon: Icons.face_retouching_natural,
-            color: Colors.purple,
-          ),
-          const SizedBox(height: 28),
-
-          // Challenge card
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.purple.shade700, Colors.purple.shade500],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              children: [
-                const Icon(Icons.record_voice_over, color: Colors.white, size: 36),
-                const SizedBox(height: 12),
-                const Text('Tantangan Liveness',
-                    style: TextStyle(
-                        color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 6),
-                Text(
-                  _challenge,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      height: 1.3),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade200),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Cara Melakukan Selfie:',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryBlack,
-                        fontSize: 13)),
-                const SizedBox(height: 12),
-                _buildHowRow('1', 'Posisikan wajah di dalam lingkaran panduan'),
-                const SizedBox(height: 8),
-                _buildHowRow('2', 'Lakukan: $_challenge'),
-                const SizedBox(height: 8),
-                _buildHowRow('3', 'Ambil foto saat melakukan gerakan tersebut'),
-                const SizedBox(height: 8),
-                _buildHowRow('4', 'Pastikan pencahayaan cukup, wajah terlihat jelas'),
-              ],
-            ),
-          ),
-          const SizedBox(height: 28),
-
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.purple.shade700,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            ),
-            icon: const Icon(Icons.camera_front, size: 20),
-            label: const Text('Mulai Selfie Sekarang',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-            onPressed: () => setState(() => _step = 2),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─── Step 2: Take Selfie ──────────────────────────────────────────────────
+  // ─── Step 1: Upload Selfie ──────────────────────────────────────────────────
 
   Widget _buildSelfieStep() {
     return SingleChildScrollView(
@@ -454,90 +311,120 @@ class _LivenessScreenState extends State<LivenessScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Challenge reminder
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.purple.shade50,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.purple.shade200),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.task_alt, color: Colors.purple.shade600, size: 20),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Lakukan saat foto: $_challenge',
-                    style: TextStyle(
-                        color: Colors.purple.shade800,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13),
-                  ),
-                ),
-              ],
-            ),
+          _buildStepHeader(
+            step: '2 / 2',
+            title: 'Foto Selfie Anda',
+            subtitle: 'Pastikan wajah terlihat jelas tanpa aksesoris yang menutupi.',
+            icon: Icons.face_retouching_natural,
+            color: Colors.purple,
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 24),
 
-          // Selfie frame
-          Center(
-            child: ScaleTransition(
-              scale: _pulseAnim,
-              child: Container(
-                width: 220,
-                height: 220,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.purple.shade400, width: 3),
-                  color: Colors.grey.shade100,
-                ),
-                child: ClipOval(
-                  child: _selfieBytes != null
-                      ? Image.memory(_selfieBytes!, fit: BoxFit.cover)
-                      : Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.face, size: 64, color: Colors.grey.shade300),
-                            const SizedBox(height: 8),
-                            Text('Wajah Anda',
-                                style: TextStyle(
-                                    color: Colors.grey.shade400, fontSize: 12)),
-                          ],
-                        ),
+          // Preview or placeholder
+          GestureDetector(
+            onTap: () => _pickSelfie(),
+            child: Container(
+              height: 180,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: _selfieBytes != null ? Colors.green.shade400 : Colors.grey.shade300,
+                  width: _selfieBytes != null ? 2 : 1,
                 ),
               ),
+              child: _selfieBytes != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(15),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.memory(_selfieBytes!, fit: BoxFit.cover),
+                          Positioned(
+                            top: 8, right: 8,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                  color: Colors.green.shade600, shape: BoxShape.circle),
+                              child: const Icon(Icons.check, color: Colors.white, size: 16),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.face, size: 48, color: Colors.grey.shade300),
+                        const SizedBox(height: 12),
+                        const Text('Ketuk untuk foto Selfie',
+                            style: TextStyle(
+                                color: AppTheme.primaryBlack,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14)),
+                        const SizedBox(height: 4),
+                        Text('Gunakan kamera depan',
+                            style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                      ],
+                    ),
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Posisikan wajah di dalam lingkaran',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
-          ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 12),
 
-          if (_isProcessing) ...[
-            const Center(child: CircularProgressIndicator()),
+          _buildTipBox([
+            'Pastikan pencahayaan cukup',
+            'Lepaskan kacamata hitam atau masker',
+            'Wajah harus terlihat jelas',
+          ]),
+          const SizedBox(height: 20),
+
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: Colors.grey.shade400),
+                    foregroundColor: AppTheme.textMuted,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  icon: const Icon(Icons.photo_library_outlined, size: 18),
+                  label: const Text('Galeri', style: TextStyle(fontWeight: FontWeight.w600)),
+                  onPressed: () => _pickSelfie(gallery: true),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryBlack,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  icon: const Icon(Icons.camera_front, size: 18),
+                  label: const Text('Foto Sekarang', style: TextStyle(fontWeight: FontWeight.bold)),
+                  onPressed: () => _pickSelfie(),
+                ),
+              ),
+            ],
+          ),
+
+          if (_selfieBytes != null) ...[
             const SizedBox(height: 12),
-            const Text('Memverifikasi liveness...',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppTheme.textMuted)),
-          ] else ...[
-            ElevatedButton.icon(
+            ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.purple.shade700,
+                backgroundColor: Colors.green.shade600,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              icon: const Icon(Icons.camera_front, size: 20),
-              label: Text(
-                _selfieBytes == null ? 'Ambil Selfie' : 'Foto Ulang',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-              ),
-              onPressed: _takeSelfie,
+              onPressed: () => setState(() => _step = 2),
+              child: const Text('Lanjut ke Hasil',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         ],
@@ -545,7 +432,8 @@ class _LivenessScreenState extends State<LivenessScreen>
     );
   }
 
-  // ─── Step 3: Result ───────────────────────────────────────────────────────
+
+  // ─── Step 2: Result ───────────────────────────────────────────────────────
 
   Widget _buildResultStep() {
     return SingleChildScrollView(
@@ -569,7 +457,7 @@ class _LivenessScreenState extends State<LivenessScreen>
           ),
           const SizedBox(height: 16),
           const Text(
-            'Verifikasi Berhasil',
+            'Foto Berhasil',
             style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -578,7 +466,7 @@ class _LivenessScreenState extends State<LivenessScreen>
           ),
           const SizedBox(height: 6),
           Text(
-            'Identitas kamu telah diverifikasi. Data akan diteruskan ke admin untuk konfirmasi.',
+            'Identitas kamu telah difoto. Data akan diteruskan ke admin untuk konfirmasi.',
             style: TextStyle(
                 color: AppTheme.textMuted, fontSize: 13, height: 1.5),
             textAlign: TextAlign.center,
@@ -599,7 +487,7 @@ class _LivenessScreenState extends State<LivenessScreen>
               const SizedBox(width: 12),
               Expanded(
                 child: _buildPreviewCard(
-                  label: 'Selfie Liveness',
+                  label: 'Foto Selfie',
                   icon: Icons.face_retouching_natural,
                   bytes: _selfieBytes,
                   color: Colors.purple,
@@ -620,9 +508,7 @@ class _LivenessScreenState extends State<LivenessScreen>
               children: [
                 _checkRow('Foto KTP berhasil diunggah'),
                 const SizedBox(height: 8),
-                _checkRow('Liveness check: $_challenge'),
-                const SizedBox(height: 8),
-                _checkRow('Keaslian identitas terverifikasi'),
+                _checkRow('Foto Selfie berhasil diunggah'),
               ],
             ),
           ),
@@ -637,15 +523,8 @@ class _LivenessScreenState extends State<LivenessScreen>
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
             onPressed: _confirm,
-            child: const Text('Lanjut ke Pembayaran',
+            child: const Text('Lanjut',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-          ),
-          const SizedBox(height: 12),
-          TextButton.icon(
-            onPressed: _retake,
-            icon: Icon(Icons.refresh, size: 16, color: AppTheme.textMuted),
-            label: const Text('Foto Ulang Selfie',
-                style: TextStyle(color: AppTheme.textMuted, fontSize: 13)),
           ),
         ],
       ),
@@ -736,30 +615,6 @@ class _LivenessScreenState extends State<LivenessScreen>
               )),
         ],
       ),
-    );
-  }
-
-  Widget _buildHowRow(String num, String text) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 20, height: 20,
-          decoration: const BoxDecoration(
-              color: AppTheme.primaryBlack, shape: BoxShape.circle),
-          child: Center(
-              child: Text(num,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold))),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-            child: Text(text,
-                style: const TextStyle(
-                    color: AppTheme.textMuted, fontSize: 12, height: 1.4))),
-      ],
     );
   }
 

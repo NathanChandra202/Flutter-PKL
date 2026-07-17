@@ -428,7 +428,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               children: [
                 Expanded(child: _buildDocPreview('Foto KTP', booking.ktpBytes, Icons.credit_card, Colors.blue)),
                 const SizedBox(width: 10),
-                Expanded(child: _buildDocPreview('Selfie Liveness', booking.selfieBytes, Icons.face_retouching_natural, Colors.purple)),
+                Expanded(child: _buildDocPreview('Foto Selfie', booking.selfieBytes, Icons.face_retouching_natural, Colors.purple)),
               ],
             ),
             const SizedBox(height: 16),

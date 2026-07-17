@@ -125,8 +125,8 @@ class AuthProvider extends ChangeNotifier {
   BookingData? _bookingData;
   String? _assignedRoom;
   String? _accessToken;
-  
-  static const String _baseUrl = 'http://127.0.0.1:8000/api/v1';
+
+  static const String _baseUrl = 'http://192.168.1.40:8000/api/v1';
 
   // Simulated user database (for registration)
   final Map<String, Map<String, String>> _registeredUsers = {
@@ -283,27 +283,24 @@ class AuthProvider extends ChangeNotifier {
   /// Returns null on success, error message on failure
   Future<String?> login(String email, String password) async {
     final trimmedEmail = email.trim().toLowerCase();
-    
+
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/auth/login'),
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: {
-          'username': trimmedEmail,
-          'password': password,
-        },
+        body: {'username': trimmedEmail, 'password': password},
       );
-      
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         _accessToken = data['access_token'];
-        
+
         // Fetch user profile
         final profileResponse = await http.get(
           Uri.parse('$_baseUrl/auth/me'),
           headers: {'Authorization': 'Bearer $_accessToken'},
         );
-        
+
         if (profileResponse.statusCode == 200) {
           final profile = json.decode(profileResponse.body);
           _userEmail = profile['email'];
@@ -324,9 +321,14 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// Returns null on success, error message on failure
-  Future<String?> register(String nama, String email, String phone, String password) async {
+  Future<String?> register(
+    String nama,
+    String email,
+    String phone,
+    String password,
+  ) async {
     final trimmedEmail = email.trim().toLowerCase();
-    
+
     if (nama.trim().isEmpty || phone.trim().isEmpty || password.length < 8) {
       return 'Pastikan semua data diisi dengan benar dan password minimal 8 karakter kombinasi huruf dan angka.';
     }
@@ -371,7 +373,9 @@ class AuthProvider extends ChangeNotifier {
           },
           body: json.encode({
             'room_name': data.roomType,
-            'start_date': data.tanggalMulaiMenghuni?.toIso8601String() ?? DateTime.now().toIso8601String(),
+            'start_date':
+                data.tanggalMulaiMenghuni?.toIso8601String() ??
+                DateTime.now().toIso8601String(),
           }),
         );
       } catch (e) {
@@ -550,7 +554,6 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // ─── Tools API ───────────────────────────────────────────────────────────
-
 
   Future<List<Map<String, dynamic>>> fetchTools() async {
     try {
@@ -795,19 +798,37 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// Verifies face match between KTP and Selfie using FastAPI backend
-  Future<String?> verifyFaceMatch(Uint8List ktpBytes, Uint8List selfieBytes) async {
+  Future<String?> verifyFaceMatch(
+    Uint8List ktpBytes,
+    Uint8List selfieBytes,
+  ) async {
     if (_accessToken == null) return 'Anda harus login terlebih dahulu.';
-    
+
     try {
-      var request = http.MultipartRequest('POST', Uri.parse('$_baseUrl/verify/face-match'));
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$_baseUrl/verify/face-match'),
+      );
       request.headers['Authorization'] = 'Bearer $_accessToken';
-      
-      request.files.add(http.MultipartFile.fromBytes('ktp_image', ktpBytes, filename: 'ktp.jpg'));
-      request.files.add(http.MultipartFile.fromBytes('selfie_image', selfieBytes, filename: 'selfie.jpg'));
-      
+
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'ktp_image',
+          ktpBytes,
+          filename: 'ktp.jpg',
+        ),
+      );
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'selfie_image',
+          selfieBytes,
+          filename: 'selfie.jpg',
+        ),
+      );
+
       var streamedResponse = await request.send();
       var response = await http.Response.fromStream(streamedResponse);
-      
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true) {
@@ -816,7 +837,14 @@ class AuthProvider extends ChangeNotifier {
           return data['message'] ?? 'Wajah tidak cocok atau KTP tidak terbaca.';
         }
       } else {
-        return 'Gagal melakukan verifikasi wajah di server.';
+        try {
+          final data = json.decode(response.body);
+          return data['message'] ??
+              data['detail'] ??
+              'Gagal melakukan verifikasi wajah di server.';
+        } catch (_) {
+          return 'Gagal melakukan verifikasi wajah di server.';
+        }
       }
     } catch (e) {
       return 'Terjadi kesalahan koneksi saat verifikasi wajah.';

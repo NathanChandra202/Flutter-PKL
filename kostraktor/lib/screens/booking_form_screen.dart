@@ -179,7 +179,7 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text(
-            'Harap selesaikan verifikasi identitas & liveness terlebih dahulu.',
+            'Harap selesaikan verifikasi identitas terlebih dahulu.',
           ),
           backgroundColor: Colors.redAccent,
           behavior: SnackBarBehavior.floating,
@@ -542,7 +542,7 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              'Foto KTP + Liveness wajah (wajib)',
+                              'Foto KTP + Foto Selfie (wajib)',
                               style: TextStyle(
                                 color: _verificationPassed
                                     ? Colors.green.shade700
