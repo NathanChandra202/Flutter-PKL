@@ -32,17 +32,16 @@ async def verify_identity(
     ktp_path = os.path.join(UPLOAD_DIR, "ktp", ktp_filename)
     selfie_path = os.path.join(UPLOAD_DIR, "selfies", selfie_filename)
     
+    os.makedirs(os.path.dirname(ktp_path), exist_ok=True)
+    os.makedirs(os.path.dirname(selfie_path), exist_ok=True)
+    
     with open(ktp_path, "wb") as buffer:
         shutil.copyfileobj(ktp_image.file, buffer)
         
     with open(selfie_path, "wb") as buffer:
         shutil.copyfileobj(selfie_image.file, buffer)
         
-    # 1. Liveness Check on Selfie
-    is_live = ai_service.check_liveness_simple(selfie_path)
-    if not is_live:
-        return {"success": False, "message": "Liveness check failed. Please take a clear selfie."}
-        
+
     # 2. Extract OCR from KTP
     ocr_result = ai_service.extract_ktp_data(ktp_path)
     extracted_nik = ocr_result.get("nik")

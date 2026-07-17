@@ -11,9 +11,9 @@ class Settings(BaseSettings):
     
     # Database
     POSTGRES_SERVER: str = "localhost"
-    POSTGRES_USER: str = "Nathan"
-    POSTGRES_PASSWORD: str = "260926seP"
-    POSTGRES_DB: str = "kostraktor_db"
+    POSTGRES_USER: str = "postgres"
+    POSTGRES_PASSWORD: str = "1234"
+    POSTGRES_DB: str = "kostraktor_id"
     POSTGRES_PORT: str = "5432"
     
     @property

@@ -1,20 +1,60 @@
+import os
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+
 import cv2
+import numpy as np
 import pytesseract
 from deepface import DeepFace
-import os
 import re
+
+def _extract_face_array(image_path: str) -> tuple[np.ndarray | None, str | None]:
+    try:
+        faces = DeepFace.extract_faces(
+            img_path=image_path,
+            detector_backend='retinaface',
+            enforce_detection=True,
+            align=True,
+            normalize_face=True,
+        )
+
+        if not faces:
+            return None, "No face detected"
+
+        first_face = faces[0]
+        if isinstance(first_face, list):
+            first_face = first_face[0] if first_face else None
+
+        if isinstance(first_face, dict) and first_face.get('face') is not None:
+            return np.asarray(first_face['face']), None
+
+        return None, "No face data returned"
+    except Exception as e:
+        return None, str(e)
 
 def verify_face_match(img1_path: str, img2_path: str) -> dict:
     """
     Verifies if two faces belong to the same person.
     """
+    face1, err1 = _extract_face_array(img1_path)
+    face2, err2 = _extract_face_array(img2_path)
+
+    if err1:
+        return {"error": f"KTP face extraction failed: {err1}", "verified": False}
+    if err2:
+        return {"error": f"Selfie face extraction failed: {err2}", "verified": False}
+
     try:
-        # Uses VGG-Face or Facenet by default. We use Facenet as it's quite fast and accurate
-        result = DeepFace.verify(img1_path=img1_path, img2_path=img2_path, model_name="Facenet")
+        result = DeepFace.verify(
+            img1_path=face1,
+            img2_path=face2,
+            model_name="Facenet",
+            enforce_detection=False,
+        )
+        distance = result.get("distance")
         return {
-            "verified": result["verified"],
-            "distance": result["distance"],
-            "similarity": 1 - result["distance"] # rough approximation
+            "verified": result.get("verified", False),
+            "distance": distance,
+            "similarity": 1 - distance if distance is not None else None,
         }
     except Exception as e:
         return {"error": str(e), "verified": False}
@@ -46,32 +86,3 @@ def extract_ktp_data(ktp_path: str) -> dict:
     except Exception as e:
         return {"error": str(e)}
 
-def check_liveness_simple(image_path: str) -> bool:
-    """
-    A very simple static image liveness check.
-    In a real app, you'd use a sequence of frames for blink/smile detection, 
-    or an AI model trained for anti-spoofing.
-    Here we just check if a face can be clearly detected and has eyes using OpenCV Haarcascades.
-    """
-    try:
-        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-        eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
-        
-        img = cv2.imread(image_path)
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        
-        faces = face_cascade.detectMultiScale(gray, 1.3, 5)
-        
-        if len(faces) == 0:
-            return False # No face detected
-            
-        for (x, y, w, h) in faces:
-            roi_gray = gray[y:y+h, x:x+w]
-            eyes = eye_cascade.detectMultiScale(roi_gray)
-            if len(eyes) >= 1:
-                return True # Found face with at least an eye (very basic)
-                
-        return False
-    except Exception as e:
-        print(f"Liveness check error: {e}")
-        return False

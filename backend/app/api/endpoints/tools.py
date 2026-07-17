@@ -19,7 +19,7 @@ class ToolResponse(BaseModel):
     borrowed_at: Optional[datetime] = None
 
     class Config:
-        orm_mode = True
+        orm_mode = True 
         from_attributes = True
 
 INITIAL_TOOLS = [

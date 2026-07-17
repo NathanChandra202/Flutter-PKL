@@ -1,26 +1,23 @@
 from datetime import datetime, timedelta, timezone
 import warnings
 from jose import jwt
-from passlib.context import CryptContext
+import bcrypt
 from typing import Any, Union
 
 from app.core.config import settings
 
-# Suppress passlib bcrypt version warning (bcrypt >= 4.x vs passlib 1.7.x)
-warnings.filterwarnings("ignore", ".*error reading bcrypt version.*")
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-def _truncate(password: str) -> str:
-    """bcrypt silently truncates passwords >72 bytes; we enforce this explicitly."""
-    encoded = password.encode("utf-8")
-    return encoded[:72].decode("utf-8", errors="ignore")
-
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(_truncate(plain_password), hashed_password)
+    """Verify a password against its bcrypt hash"""
+    return bcrypt.checkpw(
+        plain_password.encode('utf-8'), 
+        hashed_password.encode('utf-8')
+    )
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(_truncate(password))
+    """Generate bcrypt hash for a password"""
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return hashed.decode('utf-8')
 
 def create_access_token(subject: Union[str, Any], expires_delta: timedelta = None) -> str:
     if expires_delta:
