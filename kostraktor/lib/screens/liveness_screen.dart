@@ -6,12 +6,16 @@ import '../utils/app_theme.dart';
 
 /// Result returned when selfie check completes
 class LivenessResult {
+  /// KTP image with watermark applied — for display/storage
   final Uint8List? ktpBytes;
+  /// KTP image WITHOUT watermark — for face verification backend
+  final Uint8List? ktpBytesRaw;
   final Uint8List? selfieBytes;
   final bool passed;
 
   const LivenessResult({
     this.ktpBytes,
+    this.ktpBytesRaw,
     this.selfieBytes,
     required this.passed,
   });
@@ -31,7 +35,8 @@ class _LivenessScreenState extends State<LivenessScreen> {
   // Steps: 0 = KTP, 1 = selfie, 2 = result
   int _step = 0;
 
-  Uint8List? _ktpBytes;
+  Uint8List? _ktpBytes;      // with watermark (display)
+  Uint8List? _ktpBytesRaw;   // without watermark (for backend)
   Uint8List? _selfieBytes;
 
   @override
@@ -44,14 +49,15 @@ class _LivenessScreenState extends State<LivenessScreen> {
   Future<void> _pickKtp({bool gallery = false}) async {
     final picked = await _picker.pickImage(
       source: gallery ? ImageSource.gallery : ImageSource.camera,
-      imageQuality: 85,
+      imageQuality: 90,
       preferredCameraDevice: CameraDevice.rear,
     );
     if (picked == null) return;
     final rawBytes = await picked.readAsBytes();
     final watermarked = await _applyKtpWatermark(rawBytes);
     setState(() {
-      _ktpBytes = watermarked;
+      _ktpBytesRaw = rawBytes;   // preserve original for backend
+      _ktpBytes = watermarked;   // watermarked for display
       _step = 1;
     });
   }
@@ -130,6 +136,7 @@ class _LivenessScreenState extends State<LivenessScreen> {
       context,
       LivenessResult(
         ktpBytes: _ktpBytes,
+        ktpBytesRaw: _ktpBytesRaw ?? _ktpBytes, // fallback to watermarked if raw not available
         selfieBytes: _selfieBytes,
         passed: true,
       ),

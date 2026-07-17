@@ -306,6 +306,25 @@ class AuthProvider extends ChangeNotifier {
           _userEmail = profile['email'];
           _userName = profile['nama_lengkap'];
           _currentRole = _parseRole(profile['role'] ?? 'Customer');
+
+          // --- LOCAL OVERRIDE ---
+          // Since the backend doesn't fully support room assignment yet,
+          // apply the local upgrade if they were approved by the admin locally.
+          if (_registeredUsers.containsKey(_userEmail)) {
+            final localRole = _registeredUsers[_userEmail!]?['role'];
+            if (localRole != null && localRole != 'calon') {
+              _currentRole = _parseRole(localRole);
+            }
+            _assignedRoom = _registeredUsers[_userEmail!]?['room'] as String?;
+          } else {
+            // Ensure they exist in local cache
+            _registeredUsers[_userEmail!] = {
+              'password': password,
+              'nama': _userName ?? '',
+              'role': _currentRole == UserRole.admin ? 'admin' : 'calon',
+            };
+          }
+
           notifyListeners();
           return null; // success
         } else {
@@ -384,42 +403,27 @@ class AuthProvider extends ChangeNotifier {
       }
     }
 
+    // Always add to local pending approvals queue so Admin can see the full data
+    // (including images which aren't saved to the backend)
+    final emailForQueue = _userEmail ?? 'guest_${DateTime.now().millisecondsSinceEpoch}@example.com';
+    _pendingApprovals.removeWhere((p) => p.email == emailForQueue || p.name == data.nama);
+    _pendingApprovals.add(
+      PendingUser(
+        email: emailForQueue,
+        name: _userName ?? data.nama,
+        phone: _userPhone ?? data.phone,
+        bookingData: data,
+      ),
+    );
+
     notifyListeners();
   }
 
   Future<void> loadPendingBookings() async {
-    if (_accessToken == null) return;
-    try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/bookings/pending'),
-        headers: {'Authorization': 'Bearer $_accessToken'},
-      );
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        _pendingApprovals.clear();
-        for (var b in data) {
-          _pendingApprovals.add(
-            PendingUser(
-              id: b['id'],
-              email: b['user_email'] ?? 'Unknown',
-              name: b['user_name'] ?? 'Unknown',
-              phone: '-', // Add from profile if needed
-              bookingData: BookingData(
-                nama: b['user_name'] ?? 'Unknown',
-                phone: '-',
-                nik: '',
-                roomType: b['room_name'] ?? 'Unknown',
-                bookingTime: DateTime.parse(b['booking_date']),
-                tanggalMulaiMenghuni: DateTime.parse(b['start_date']),
-              ),
-            ),
-          );
-        }
-        notifyListeners();
-      }
-    } catch (e) {
-      print('Error fetching pending bookings: $e');
-    }
+    // We intentionally do not wipe _pendingApprovals and fetch from backend here
+    // because the backend does not store the KTP/Selfie/Payment bytes yet.
+    // The local memory list contains the full data needed for the Admin panel.
+    notifyListeners();
   }
 
   Future<bool> updateBookingStatus(int bookingId, String status) async {

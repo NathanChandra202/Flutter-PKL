@@ -65,6 +65,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             onPressed: () async {
               Navigator.pop(ctx);
               
+              // Approve locally first so the local session knows the user is a resident
+              auth.adminApproveUser(_selectedUser!.email, _roomController.text.trim());
+
               if (_selectedUser!.id != null) {
                 await auth.updateBookingStatus(_selectedUser!.id!, 'APPROVED');
                 await auth.loadPendingBookings();

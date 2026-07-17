@@ -98,38 +98,166 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
       MaterialPageRoute(builder: (_) => LivenessScreen(ktpBytes: _ktpBytes)),
     );
     if (result == null) return;
-    
-    if (result.ktpBytes == null || result.selfieBytes == null) {
+
+    if (result.ktpBytesRaw == null || result.selfieBytes == null) {
       return;
     }
 
-    setState(() => _isLoading = true);
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    final error = await auth.verifyFaceMatch(result.ktpBytes!, result.selfieBytes!);
-    
     if (!mounted) return;
-    setState(() => _isLoading = false);
+
+    // Show loading dialog — AI face detection can take 10-30 seconds
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              const CircularProgressIndicator(
+                color: AppTheme.primaryBlack,
+                strokeWidth: 3,
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Memverifikasi Wajah...',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  color: AppTheme.primaryBlack,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'AI sedang mencocokkan wajah KTP dengan selfie Anda.\nProses ini memerlukan waktu 10–30 detik.',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600, height: 1.5),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    // Use raw KTP bytes (no watermark) for better face detection accuracy
+    final error = await auth.verifyFaceMatch(result.ktpBytesRaw!, result.selfieBytes!);
+
+    if (!mounted) return;
+    Navigator.of(context).pop(); // close loading dialog
 
     if (error == null) {
+      // ✅ Verification passed
       setState(() {
-        _ktpBytes = result.ktpBytes;
+        _ktpBytes = result.ktpBytes;      // watermarked for display
         _selfieBytes = result.selfieBytes;
         _verificationPassed = true;
       });
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Verifikasi Wajah Berhasil!'),
-          backgroundColor: Colors.green,
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white, size: 18),
+              SizedBox(width: 8),
+              Text('Verifikasi Wajah Berhasil! ✅', style: TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          backgroundColor: Colors.green.shade600,
+          duration: const Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
+      // ❌ Verification failed — show detailed dialog
+      if (!mounted) return;
+      _showVerificationErrorDialog(error);
     }
+  }
+
+  void _showVerificationErrorDialog(String errorMessage) {
+    // Split message and suggestion if present
+    final parts = errorMessage.split('\n\n');
+    final mainMsg = parts.isNotEmpty ? parts[0] : errorMessage;
+    final suggestion = parts.length > 1 ? parts.sublist(1).join('\n\n') : null;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.red.shade600, size: 24),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                'Verifikasi Gagal',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(mainMsg, style: const TextStyle(fontSize: 13, height: 1.5)),
+              if (suggestion != null) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.blue.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.lightbulb_outline, color: Colors.blue.shade700, size: 15),
+                          const SizedBox(width: 6),
+                          Text('Tips', style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold, fontSize: 12)),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(suggestion, style: TextStyle(fontSize: 12, color: Colors.blue.shade800, height: 1.5)),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Tutup'),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryBlack,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            icon: const Icon(Icons.refresh, size: 16),
+            label: const Text('Coba Lagi', style: TextStyle(fontWeight: FontWeight.bold)),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _openLiveness();
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   void _handleSubmit() async {

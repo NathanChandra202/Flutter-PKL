@@ -1,5 +1,7 @@
 import 'dart:math';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 
 /// Roles in the app
 /// - [guest]           : browsing only, not logged in
@@ -120,6 +122,9 @@ class AuthProvider extends ChangeNotifier {
   String? _userPhone;
   BookingData? _bookingData;
   String? _assignedRoom;
+
+  // Base URL for backend API
+  static const String _baseUrl = 'http://192.168.1.40:8000/api/v1';
 
   // Simulated user database (for registration)
   final Map<String, Map<String, String>> _registeredUsers = {
@@ -535,6 +540,90 @@ class AuthProvider extends ChangeNotifier {
     _reviews.insert(0, review); // Add to beginning (newest first)
     notifyListeners();
     return null; // Success
+  }
+
+  /// Verifies face match between KTP and Selfie using FastAPI backend.
+  /// The endpoint is public — no JWT token required.
+  /// Returns null on success, error message on failure.
+  Future<String?> verifyFaceMatch(
+    Uint8List ktpBytes,
+    Uint8List selfieBytes,
+  ) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/verify/face-match');
+      var request = http.MultipartRequest('POST', uri);
+
+      // No Authorization header needed — endpoint is public
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'ktp_image',
+          ktpBytes,
+          filename: 'ktp.jpg',
+        ),
+      );
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'selfie_image',
+          selfieBytes,
+          filename: 'selfie.jpg',
+        ),
+      );
+
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: 90), // AI models can be slow on first load
+        onTimeout: () => throw Exception('Request timeout — server terlalu lama merespons.'),
+      );
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+
+        if (data['success'] == true && data['verified'] == true) {
+          return null; // ✅ success
+        }
+
+        // Build detailed error message from backend response
+        String errorMsg =
+            data['message'] as String? ??
+            data['error'] as String? ??
+            'Verifikasi wajah gagal. Silakan coba lagi.';
+
+        final suggestion = data['suggestion'] as String?;
+        if (suggestion != null && suggestion.isNotEmpty) {
+          errorMsg += '\n\n$suggestion';
+        }
+        return errorMsg;
+
+      } else {
+        // Non-200 HTTP response
+        try {
+          final data = json.decode(response.body) as Map<String, dynamic>;
+          String errorMsg =
+              data['message'] as String? ??
+              data['error'] as String? ??
+              data['detail'] as String? ??
+              'Server mengembalikan error ${response.statusCode}.';
+
+          final suggestion = data['suggestion'] as String?;
+          if (suggestion != null && suggestion.isNotEmpty) {
+            errorMsg += '\n\n$suggestion';
+          }
+          return errorMsg;
+        } catch (_) {
+          return 'Gagal terhubung ke server verifikasi. Kode: ${response.statusCode}. Pastikan backend aktif dan IP address sudah benar.';
+        }
+      }
+    } on Exception catch (e) {
+      debugPrint('verifyFaceMatch error: $e');
+      final msg = e.toString();
+      if (msg.contains('timeout') || msg.contains('Timeout')) {
+        return 'Server terlalu lama merespons (>90 detik). Model AI sedang loading, coba lagi dalam beberapa saat.';
+      }
+      if (msg.contains('SocketException') || msg.contains('Connection refused')) {
+        return 'Tidak dapat terhubung ke server. Pastikan:\n• Backend aktif (uvicorn berjalan)\n• IP address benar di auth_provider.dart\n• HP dan PC di jaringan WiFi yang sama';
+      }
+      return 'Terjadi kesalahan koneksi: $msg';
+    }
   }
 
   UserRole _parseRole(String role) {

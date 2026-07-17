@@ -3,19 +3,17 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 import '../utils/app_theme.dart';
- 
+import '../providers/auth_provider.dart';
+
 /// Result returned when liveness check completes
 class LivenessResult {
   final Uint8List? ktpBytes;
   final Uint8List? selfieBytes;
   final bool passed;
 
-  const LivenessResult({
-    this.ktpBytes,
-    this.selfieBytes,
-    required this.passed,
-  });
+  const LivenessResult({this.ktpBytes, this.selfieBytes, required this.passed});
 }
 
 class LivenessScreen extends StatefulWidget {
@@ -60,9 +58,10 @@ class _LivenessScreenState extends State<LivenessScreen>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..repeat(reverse: true);
-    _pulseAnim = Tween<double>(begin: 1.0, end: 1.06).animate(
-      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
-    );
+    _pulseAnim = Tween<double>(
+      begin: 1.0,
+      end: 1.06,
+    ).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -102,9 +101,7 @@ class _LivenessScreenState extends State<LivenessScreen>
     final w = src.width.toDouble();
     final h = src.height.toDouble();
 
-    final textPainter = TextPainter(
-      textDirection: TextDirection.ltr,
-    );
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
 
     // Draw watermark text across the image
     final now = DateTime.now();
@@ -124,7 +121,7 @@ class _LivenessScreenState extends State<LivenessScreen>
       textPainter.text = TextSpan(
         text: line,
         style: TextStyle(
-          color: Colors.white.withOpacity(0.85),
+          color: Colors.white.withValues(alpha: 0.85),
           fontSize: w * 0.05,
           fontWeight: FontWeight.bold,
           letterSpacing: 1.2,
@@ -149,18 +146,187 @@ class _LivenessScreenState extends State<LivenessScreen>
     );
     if (picked == null) return;
     final bytes = await picked.readAsBytes();
+
+    if (!mounted) return;
+
     setState(() {
       _selfieBytes = bytes;
       _isProcessing = true;
     });
 
-    // Simulate liveness processing
-    await Future.delayed(const Duration(milliseconds: 1500));
+    // Get auth provider before async operations
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+
+    if (_ktpBytes == null) {
+      if (!mounted) return;
+      setState(() => _isProcessing = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Foto KTP tidak ditemukan. Silakan ulangi dari awal.',
+            ),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+      return;
+    }
+
+    final error = await auth.verifyFaceMatch(_ktpBytes!, bytes);
+
     if (!mounted) return;
-    setState(() {
-      _isProcessing = false;
-      _step = 3;
-    });
+
+    setState(() => _isProcessing = false);
+
+    if (error != null) {
+      // Verification failed - show error dialog with options
+      _showVerificationErrorDialog(error);
+    } else {
+      // Success - move to result step
+      setState(() => _step = 3);
+    }
+  }
+
+  void _showVerificationErrorDialog(String errorMessage) {
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(
+              Icons.warning_amber_rounded,
+              color: Colors.orange.shade600,
+              size: 28,
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Verifikasi Gagal',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                errorMessage,
+                style: const TextStyle(fontSize: 14, height: 1.5),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.lightbulb_outline,
+                          color: Colors.blue.shade700,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Tips untuk foto yang lebih baik:',
+                          style: TextStyle(
+                            color: Colors.blue.shade700,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    _buildErrorTip('Pastikan pencahayaan cukup terang'),
+                    _buildErrorTip('Hindari foto yang buram atau goyang'),
+                    _buildErrorTip(
+                      'Wajah harus terlihat jelas dan tidak tertutup',
+                    ),
+                    _buildErrorTip(
+                      'Posisikan wajah menghadap langsung ke kamera',
+                    ),
+                    _buildErrorTip(
+                      'Lepas masker, kacamata hitam, atau aksesoris',
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // Return to KTP step
+              setState(() {
+                _step = 0;
+                _ktpBytes = null;
+                _selfieBytes = null;
+              });
+            },
+            child: const Text('Foto KTP Ulang'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.purple.shade700,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: () {
+              Navigator.of(context).pop();
+              // Stay on selfie step for retake
+              setState(() {
+                _selfieBytes = null;
+              });
+            },
+            child: const Text(
+              'Foto Selfie Ulang',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorTip(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('• ', style: TextStyle(color: Colors.blue.shade700)),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: Colors.blue.shade800,
+                fontSize: 11,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _retake() {
@@ -190,8 +356,11 @@ class _LivenessScreenState extends State<LivenessScreen>
         elevation: 0,
         title: const Text(
           'Verifikasi Identitas',
-          style: TextStyle(color: AppTheme.primaryBlack, fontWeight: FontWeight.bold),
-        ), 
+          style: TextStyle(
+            color: AppTheme.primaryBlack,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         centerTitle: true,
         iconTheme: const IconThemeData(color: AppTheme.primaryBlack),
         bottom: PreferredSize(
@@ -210,11 +379,16 @@ class _LivenessScreenState extends State<LivenessScreen>
 
   Widget _buildStep() {
     switch (_step) {
-      case 0: return _buildKtpStep();
-      case 1: return _buildInstructionStep();
-      case 2: return _buildSelfieStep();
-      case 3: return _buildResultStep();
-      default: return _buildKtpStep();
+      case 0:
+        return _buildKtpStep();
+      case 1:
+        return _buildInstructionStep();
+      case 2:
+        return _buildSelfieStep();
+      case 3:
+        return _buildResultStep();
+      default:
+        return _buildKtpStep();
     }
   }
 
@@ -230,7 +404,8 @@ class _LivenessScreenState extends State<LivenessScreen>
           _buildStepHeader(
             step: '1 / 2',
             title: 'Foto KTP Anda',
-            subtitle: 'Pastikan foto jelas, tidak buram, dan seluruh kartu terlihat.',
+            subtitle:
+                'Pastikan foto jelas, tidak buram, dan seluruh kartu terlihat.',
             icon: Icons.credit_card_outlined,
             color: Colors.blue,
           ),
@@ -245,7 +420,9 @@ class _LivenessScreenState extends State<LivenessScreen>
                 color: Colors.grey.shade50,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: _ktpBytes != null ? Colors.green.shade400 : Colors.grey.shade300,
+                  color: _ktpBytes != null
+                      ? Colors.green.shade400
+                      : Colors.grey.shade300,
                   width: _ktpBytes != null ? 2 : 1,
                 ),
               ),
@@ -257,12 +434,19 @@ class _LivenessScreenState extends State<LivenessScreen>
                         children: [
                           Image.memory(_ktpBytes!, fit: BoxFit.cover),
                           Positioned(
-                            top: 8, right: 8,
+                            top: 8,
+                            right: 8,
                             child: Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                  color: Colors.green.shade600, shape: BoxShape.circle),
-                              child: const Icon(Icons.check, color: Colors.white, size: 16),
+                                color: Colors.green.shade600,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.check,
+                                color: Colors.white,
+                                size: 16,
+                              ),
                             ),
                           ),
                         ],
@@ -271,16 +455,28 @@ class _LivenessScreenState extends State<LivenessScreen>
                   : Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.credit_card, size: 48, color: Colors.grey.shade300),
+                        Icon(
+                          Icons.credit_card,
+                          size: 48,
+                          color: Colors.grey.shade300,
+                        ),
                         const SizedBox(height: 12),
-                        const Text('Ketuk untuk foto KTP',
-                            style: TextStyle(
-                                color: AppTheme.primaryBlack,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14)),
+                        const Text(
+                          'Ketuk untuk foto KTP',
+                          style: TextStyle(
+                            color: AppTheme.primaryBlack,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
                         const SizedBox(height: 4),
-                        Text('Gunakan kamera belakang',
-                            style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                        Text(
+                          'Gunakan kamera belakang',
+                          style: TextStyle(
+                            color: Colors.grey.shade500,
+                            fontSize: 12,
+                          ),
+                        ),
                       ],
                     ),
             ),
@@ -302,10 +498,15 @@ class _LivenessScreenState extends State<LivenessScreen>
                     side: BorderSide(color: Colors.grey.shade400),
                     foregroundColor: AppTheme.textMuted,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   icon: const Icon(Icons.photo_library_outlined, size: 18),
-                  label: const Text('Galeri', style: TextStyle(fontWeight: FontWeight.w600)),
+                  label: const Text(
+                    'Galeri',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                   onPressed: () => _pickKtp(gallery: true),
                 ),
               ),
@@ -318,10 +519,15 @@ class _LivenessScreenState extends State<LivenessScreen>
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   icon: const Icon(Icons.camera_alt, size: 18),
-                  label: const Text('Foto Sekarang', style: TextStyle(fontWeight: FontWeight.bold)),
+                  label: const Text(
+                    'Foto Sekarang',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   onPressed: () => _pickKtp(),
                 ),
               ),
@@ -336,11 +542,15 @@ class _LivenessScreenState extends State<LivenessScreen>
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               onPressed: () => setState(() => _step = 1),
-              child: const Text('Lanjut ke Verifikasi Wajah',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const Text(
+                'Lanjut ke Verifikasi Wajah',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         ],
@@ -360,7 +570,8 @@ class _LivenessScreenState extends State<LivenessScreen>
           _buildStepHeader(
             step: '2 / 2',
             title: 'Verifikasi Wajah (Liveness)',
-            subtitle: 'Kami perlu memastikan kamu adalah orang yang memegang KTP tersebut.',
+            subtitle:
+                'Kami perlu memastikan kamu adalah orang yang memegang KTP tersebut.',
             icon: Icons.face_retouching_natural,
             color: Colors.purple,
           ),
@@ -379,19 +590,29 @@ class _LivenessScreenState extends State<LivenessScreen>
             ),
             child: Column(
               children: [
-                const Icon(Icons.record_voice_over, color: Colors.white, size: 36),
+                const Icon(
+                  Icons.record_voice_over,
+                  color: Colors.white,
+                  size: 36,
+                ),
                 const SizedBox(height: 12),
-                const Text('Tantangan Liveness',
-                    style: TextStyle(
-                        color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
+                const Text(
+                  'Tantangan Liveness',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 6),
                 Text(
                   _challenge,
                   style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      height: 1.3),
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    height: 1.3,
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -409,11 +630,14 @@ class _LivenessScreenState extends State<LivenessScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Cara Melakukan Selfie:',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryBlack,
-                        fontSize: 13)),
+                const Text(
+                  'Cara Melakukan Selfie:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primaryBlack,
+                    fontSize: 13,
+                  ),
+                ),
                 const SizedBox(height: 12),
                 _buildHowRow('1', 'Posisikan wajah di dalam lingkaran panduan'),
                 const SizedBox(height: 8),
@@ -421,7 +645,10 @@ class _LivenessScreenState extends State<LivenessScreen>
                 const SizedBox(height: 8),
                 _buildHowRow('3', 'Ambil foto saat melakukan gerakan tersebut'),
                 const SizedBox(height: 8),
-                _buildHowRow('4', 'Pastikan pencahayaan cukup, wajah terlihat jelas'),
+                _buildHowRow(
+                  '4',
+                  'Pastikan pencahayaan cukup, wajah terlihat jelas',
+                ),
               ],
             ),
           ),
@@ -433,11 +660,15 @@ class _LivenessScreenState extends State<LivenessScreen>
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 16),
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
             ),
             icon: const Icon(Icons.camera_front, size: 20),
-            label: const Text('Mulai Selfie Sekarang',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            label: const Text(
+              'Mulai Selfie Sekarang',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            ),
             onPressed: () => setState(() => _step = 2),
           ),
         ],
@@ -470,9 +701,10 @@ class _LivenessScreenState extends State<LivenessScreen>
                   child: Text(
                     'Lakukan saat foto: $_challenge',
                     style: TextStyle(
-                        color: Colors.purple.shade800,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13),
+                      color: Colors.purple.shade800,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
               ],
@@ -498,11 +730,19 @@ class _LivenessScreenState extends State<LivenessScreen>
                       : Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.face, size: 64, color: Colors.grey.shade300),
+                            Icon(
+                              Icons.face,
+                              size: 64,
+                              color: Colors.grey.shade300,
+                            ),
                             const SizedBox(height: 8),
-                            Text('Wajah Anda',
-                                style: TextStyle(
-                                    color: Colors.grey.shade400, fontSize: 12)),
+                            Text(
+                              'Wajah Anda',
+                              style: TextStyle(
+                                color: Colors.grey.shade400,
+                                fontSize: 12,
+                              ),
+                            ),
                           ],
                         ),
                 ),
@@ -520,9 +760,11 @@ class _LivenessScreenState extends State<LivenessScreen>
           if (_isProcessing) ...[
             const Center(child: CircularProgressIndicator()),
             const SizedBox(height: 12),
-            const Text('Memverifikasi liveness...',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppTheme.textMuted)),
+            const Text(
+              'Memverifikasi liveness...',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppTheme.textMuted),
+            ),
           ] else ...[
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
@@ -530,12 +772,17 @@ class _LivenessScreenState extends State<LivenessScreen>
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
               icon: const Icon(Icons.camera_front, size: 20),
               label: Text(
                 _selfieBytes == null ? 'Ambil Selfie' : 'Foto Ulang',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
               ),
               onPressed: _takeSelfie,
             ),
@@ -557,30 +804,38 @@ class _LivenessScreenState extends State<LivenessScreen>
           const SizedBox(height: 12),
           Center(
             child: Container(
-              width: 80, height: 80,
+              width: 80,
+              height: 80,
               decoration: BoxDecoration(
                 color: Colors.green.shade50,
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.green.shade300, width: 2),
               ),
-              child: Icon(Icons.verified_user,
-                  color: Colors.green.shade600, size: 44),
+              child: Icon(
+                Icons.verified_user,
+                color: Colors.green.shade600,
+                size: 44,
+              ),
             ),
           ),
           const SizedBox(height: 16),
           const Text(
             'Verifikasi Berhasil',
             style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.primaryBlack),
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.primaryBlack,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 6),
           Text(
             'Identitas kamu telah diverifikasi. Data akan diteruskan ke admin untuk konfirmasi.',
             style: TextStyle(
-                color: AppTheme.textMuted, fontSize: 13, height: 1.5),
+              color: AppTheme.textMuted,
+              fontSize: 13,
+              height: 1.5,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 28),
@@ -634,18 +889,24 @@ class _LivenessScreenState extends State<LivenessScreen>
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 16),
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
             ),
             onPressed: _confirm,
-            child: const Text('Lanjut ke Pembayaran',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            child: const Text(
+              'Lanjut ke Pembayaran',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            ),
           ),
           const SizedBox(height: 12),
           TextButton.icon(
             onPressed: _retake,
             icon: Icon(Icons.refresh, size: 16, color: AppTheme.textMuted),
-            label: const Text('Foto Ulang Selfie',
-                style: TextStyle(color: AppTheme.textMuted, fontSize: 13)),
+            label: const Text(
+              'Foto Ulang Selfie',
+              style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+            ),
           ),
         ],
       ),
@@ -665,11 +926,13 @@ class _LivenessScreenState extends State<LivenessScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 48, height: 48,
+          width: 48,
+          height: 48,
           decoration: BoxDecoration(
-              color: color.shade50,
-              shape: BoxShape.circle,
-              border: Border.all(color: color.shade200)),
+            color: color.shade50,
+            shape: BoxShape.circle,
+            border: Border.all(color: color.shade200),
+          ),
           child: Icon(icon, color: color.shade600, size: 24),
         ),
         const SizedBox(width: 14),
@@ -677,20 +940,31 @@ class _LivenessScreenState extends State<LivenessScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(step,
-                  style: TextStyle(
-                      color: color.shade600,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold)),
-              Text(title,
-                  style: const TextStyle(
-                      color: AppTheme.primaryBlack,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold)),
+              Text(
+                step,
+                style: TextStyle(
+                  color: color.shade600,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: AppTheme.primaryBlack,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const SizedBox(height: 4),
-              Text(subtitle,
-                  style: const TextStyle(
-                      color: AppTheme.textMuted, fontSize: 12, height: 1.4)),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  color: AppTheme.textMuted,
+                  fontSize: 12,
+                  height: 1.4,
+                ),
+              ),
             ],
           ),
         ),
@@ -709,31 +983,46 @@ class _LivenessScreenState extends State<LivenessScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            Icon(Icons.lightbulb_outline, color: Colors.blue.shade600, size: 16),
-            const SizedBox(width: 6),
-            Text('Tips',
+          Row(
+            children: [
+              Icon(
+                Icons.lightbulb_outline,
+                color: Colors.blue.shade600,
+                size: 16,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Tips',
                 style: TextStyle(
-                    color: Colors.blue.shade700,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12)),
-          ]),
-          const SizedBox(height: 8),
-          ...tips.map((t) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('- ', style: TextStyle(color: Colors.blue.shade600)),
-                    Expanded(
-                        child: Text(t,
-                            style: TextStyle(
-                                color: Colors.blue.shade800,
-                                fontSize: 11,
-                                height: 1.4))),
-                  ],
+                  color: Colors.blue.shade700,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
                 ),
-              )),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...tips.map(
+            (t) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('- ', style: TextStyle(color: Colors.blue.shade600)),
+                  Expanded(
+                    child: Text(
+                      t,
+                      style: TextStyle(
+                        color: Colors.blue.shade800,
+                        fontSize: 11,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -744,21 +1033,34 @@ class _LivenessScreenState extends State<LivenessScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 20, height: 20,
+          width: 20,
+          height: 20,
           decoration: const BoxDecoration(
-              color: AppTheme.primaryBlack, shape: BoxShape.circle),
+            color: AppTheme.primaryBlack,
+            shape: BoxShape.circle,
+          ),
           child: Center(
-              child: Text(num,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold))),
+            child: Text(
+              num,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
         ),
         const SizedBox(width: 10),
         Expanded(
-            child: Text(text,
-                style: const TextStyle(
-                    color: AppTheme.textMuted, fontSize: 12, height: 1.4))),
+          child: Text(
+            text,
+            style: const TextStyle(
+              color: AppTheme.textMuted,
+              fontSize: 12,
+              height: 1.4,
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -779,28 +1081,41 @@ class _LivenessScreenState extends State<LivenessScreen>
       child: ClipRRect(
         borderRadius: BorderRadius.circular(11),
         child: bytes != null
-            ? Stack(fit: StackFit.expand, children: [
-                Image.memory(bytes, fit: BoxFit.cover),
-                Positioned(
-                  bottom: 0, left: 0, right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    color: Colors.black54,
-                    child: Text(label,
+            ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.memory(bytes, fit: BoxFit.cover),
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      color: Colors.black54,
+                      child: Text(
+                        label,
                         textAlign: TextAlign.center,
                         style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold)),
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ])
-            : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(icon, color: color.shade300, size: 32),
-                const SizedBox(height: 6),
-                Text(label,
-                    style: TextStyle(color: color.shade400, fontSize: 11)),
-              ]),
+                ],
+              )
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, color: color.shade300, size: 32),
+                  const SizedBox(height: 6),
+                  Text(
+                    label,
+                    style: TextStyle(color: color.shade400, fontSize: 11),
+                  ),
+                ],
+              ),
       ),
     );
   }
@@ -811,11 +1126,15 @@ class _LivenessScreenState extends State<LivenessScreen>
         Icon(Icons.check_circle, color: Colors.green.shade600, size: 18),
         const SizedBox(width: 10),
         Expanded(
-            child: Text(text,
-                style: TextStyle(
-                    color: Colors.green.shade800,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600))),
+          child: Text(
+            text,
+            style: TextStyle(
+              color: Colors.green.shade800,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
       ],
     );
   }
