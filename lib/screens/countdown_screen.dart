@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import '../utils/app_theme.dart';
+import '../utils/whatsapp_helper.dart';
 import '../providers/auth_provider.dart';
 import 'main_navigation.dart';
 
@@ -36,7 +37,8 @@ class _CountdownScreenState extends State<CountdownScreen> {
   void initState() {
     super.initState();
     // Use the guaranteed-unique code from BookingData (generated in AuthProvider)
-    _uniqueCode = widget.bookingData?.uniquePaymentCode ?? generateUniquePaymentCode();
+    _uniqueCode =
+        widget.bookingData?.uniquePaymentCode ?? generateUniquePaymentCode();
     _startTimer();
   }
 
@@ -178,15 +180,22 @@ class _CountdownScreenState extends State<CountdownScreen> {
     );
   }
 
-  void _copyToClipboard(String text) {
-    Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$text disalin ke clipboard'),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        duration: const Duration(seconds: 1),
-      ),
+  Future<void> _contactAdminWhatsApp() async {
+    final baseAmount = _getBaseAmount();
+    final totalAmount = baseAmount + _uniqueCode;
+    final totalFormatted = _formatRupiah(totalAmount);
+
+    final nama = widget.bookingData?.nama ?? 'Calon Penghuni';
+    final roomType = widget.bookingData?.roomType ?? '-';
+    final phone = widget.bookingData?.phone ?? '-';
+
+    await WhatsAppHelper.contactAdminPaymentConfirmation(
+      context: context,
+      nama: nama,
+      phone: phone,
+      roomType: roomType,
+      totalAmount: totalFormatted,
+      uniqueCode: _uniqueCode,
     );
   }
 
@@ -308,6 +317,38 @@ class _CountdownScreenState extends State<CountdownScreen> {
 
               // Referensi Transaksi input
               _buildReferensiSection(),
+              const SizedBox(height: 20),
+
+              // Tombol WhatsApp Admin (NEW)
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFF25D366), width: 2),
+                    foregroundColor: const Color(0xFF25D366),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  icon: const Icon(Icons.chat_bubble_outline, size: 22),
+                  label: const Text(
+                    'Hubungi Admin via WhatsApp',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  onPressed: _contactAdminWhatsApp,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Tanya admin jika ada kendala pembayaran',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppTheme.textMuted,
+                  fontSize: 11,
+                  height: 1.5,
+                ),
+              ),
               const SizedBox(height: 20),
 
               // Konfirmasi button
@@ -509,7 +550,7 @@ class _CountdownScreenState extends State<CountdownScreen> {
 
   Widget _buildBankCard(String depositFormatted, String totalFormatted) {
     const rekening = '123-00-998877-1';
-    return Container( 
+    return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -580,7 +621,7 @@ class _CountdownScreenState extends State<CountdownScreen> {
               ),
               const SizedBox(width: 8),
               GestureDetector(
-                onTap: () => _copyToClipboard(rekening),
+                onTap: () => WhatsAppHelper.copyToClipboard(rekening, context),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
@@ -655,7 +696,8 @@ class _CountdownScreenState extends State<CountdownScreen> {
           ),
           const SizedBox(height: 16),
           GestureDetector(
-            onTap: () => _copyToClipboard(totalFormatted),
+            onTap: () =>
+                WhatsAppHelper.copyToClipboard(totalFormatted, context),
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(

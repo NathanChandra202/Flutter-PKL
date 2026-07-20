@@ -18,17 +18,32 @@ class DetailScreen extends StatelessWidget {
     const phoneNumber = '6281234567890'; // Ganti dengan nomor admin
     const message =
         'Halo Admin Kostraktor, saya ingin bertanya tentang sewa kamar.';
-    final url = Uri.parse(
+
+    // Coba wa.me link dulu (universal link)
+    final waUrl = Uri.parse(
       'https://wa.me/$phoneNumber?text=${Uri.encodeComponent(message)}',
     );
+    // Fallback ke deep link langsung jika wa.me gagal
+    final waDeepLink = Uri.parse(
+      'whatsapp://send?phone=$phoneNumber&text=${Uri.encodeComponent(message)}',
+    );
 
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } else {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tidak dapat membuka WhatsApp')),
-        );
+    try {
+      final launched = await launchUrl(waUrl, mode: LaunchMode.externalApplication);
+      if (!launched) {
+        await launchUrl(waDeepLink, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {
+      try {
+        await launchUrl(waDeepLink, mode: LaunchMode.externalApplication);
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('WhatsApp tidak ditemukan. Pastikan WA sudah terinstall.'),
+            ),
+          );
+        }
       }
     }
   }

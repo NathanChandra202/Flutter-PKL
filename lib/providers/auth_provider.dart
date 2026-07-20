@@ -124,7 +124,7 @@ class AuthProvider extends ChangeNotifier {
   String? _assignedRoom;
 
   // Base URL for backend API
-  static const String _baseUrl = 'http://192.168.1.40:8000/api/v1';
+  static const String _baseUrl = 'http://127.0.0.1:8000/api/v1';
 
   // Simulated user database (for registration)
   final Map<String, Map<String, String>> _registeredUsers = {
@@ -571,7 +571,8 @@ class AuthProvider extends ChangeNotifier {
 
       final streamedResponse = await request.send().timeout(
         const Duration(seconds: 90), // AI models can be slow on first load
-        onTimeout: () => throw Exception('Request timeout — server terlalu lama merespons.'),
+        onTimeout: () =>
+            throw Exception('Request timeout — server terlalu lama merespons.'),
       );
       final response = await http.Response.fromStream(streamedResponse);
 
@@ -593,7 +594,6 @@ class AuthProvider extends ChangeNotifier {
           errorMsg += '\n\n$suggestion';
         }
         return errorMsg;
-
       } else {
         // Non-200 HTTP response
         try {
@@ -619,7 +619,8 @@ class AuthProvider extends ChangeNotifier {
       if (msg.contains('timeout') || msg.contains('Timeout')) {
         return 'Server terlalu lama merespons (>90 detik). Model AI sedang loading, coba lagi dalam beberapa saat.';
       }
-      if (msg.contains('SocketException') || msg.contains('Connection refused')) {
+      if (msg.contains('SocketException') ||
+          msg.contains('Connection refused')) {
         return 'Tidak dapat terhubung ke server. Pastikan:\n• Backend aktif (uvicorn berjalan)\n• IP address benar di auth_provider.dart\n• HP dan PC di jaringan WiFi yang sama';
       }
       return 'Terjadi kesalahan koneksi: $msg';

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../utils/app_theme.dart';
 import '../providers/auth_provider.dart';
 import 'detail_screen.dart';
@@ -72,9 +73,18 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark);
     final filtered = _filteredUnits;
+    final auth = Provider.of<AuthProvider>(context);
 
     return Scaffold(
       backgroundColor: AppTheme.bgWhite,
+      floatingActionButton: auth.isAdmin
+          ? null
+          : FloatingActionButton(
+              onPressed: () => _showWaSheet(context),
+              backgroundColor: const Color(0xFF25D366),
+              tooltip: 'Hubungi Admin via WhatsApp',
+              child: const Icon(Icons.chat, color: Colors.white),
+            ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -339,6 +349,230 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  // ─── WhatsApp Functions ────────────────────────────────────────────────────
+
+  Future<void> _launchWa(BuildContext context, String message) async {
+    final encoded = Uri.encodeComponent('$message\n\n(via Kostraktor App)');
+    final url = Uri.parse('https://wa.me/6281234567890?text=$encoded');
+
+    try {
+      final canLaunch = await canLaunchUrl(url);
+      if (canLaunch) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tidak dapat membuka WhatsApp. Hubungi 081234567890'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
+  }
+
+  void _showWaSheet(BuildContext ctx) {
+    final msgCtrl = TextEditingController();
+    showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (bCtx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(bCtx).viewInsets.bottom),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Handle bar
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF25D366).withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.chat_bubble_outline,
+                      color: Color(0xFF25D366),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Hubungi Admin',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        Text(
+                          'via WhatsApp',
+                          style: TextStyle(
+                            color: AppTheme.textMuted,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // Quick buttons
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _quickChip(
+                    bCtx,
+                    'Tanya jadwal visit',
+                    'Halo Admin, saya ingin tanya jadwal visit kos',
+                  ),
+                  _quickChip(
+                    bCtx,
+                    'Info pembayaran',
+                    'Halo Admin, saya ingin tanya cara pembayaran',
+                  ),
+                  _quickChip(
+                    bCtx,
+                    'Proses verifikasi',
+                    'Halo Admin, saya ingin tanya status verifikasi saya',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Custom message field
+              TextField(
+                controller: msgCtrl,
+                maxLines: 3,
+                style: const TextStyle(fontSize: 13),
+                decoration: InputDecoration(
+                  hintText: 'Atau tulis pesan kamu sendiri...',
+                  hintStyle: const TextStyle(
+                    color: AppTheme.textMuted,
+                    fontSize: 13,
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  contentPadding: const EdgeInsets.all(14),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade200),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade200),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                      color: Color(0xFF25D366),
+                      width: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Send custom message button
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF25D366),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                icon: const Icon(Icons.send, size: 18),
+                label: const Text(
+                  'Kirim Pesan',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                onPressed: () {
+                  Navigator.pop(bCtx);
+                  final msg = msgCtrl.text.trim().isNotEmpty
+                      ? msgCtrl.text.trim()
+                      : 'Halo Admin Kostraktor, saya ingin bertanya';
+                  _launchWa(ctx, msg);
+                },
+              ),
+
+              // Or use default greeting
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(bCtx);
+                  _launchWa(ctx, 'Halo Admin Kostraktor, saya ingin bertanya');
+                },
+                child: const Text(
+                  'Atau kirim salam singkat',
+                  style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _quickChip(BuildContext context, String label, String msg) {
+    return InkWell(
+      onTap: () {
+        Navigator.pop(context);
+        _launchWa(context, msg);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: AppTheme.primaryBlack,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ),
     );

@@ -310,14 +310,26 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _launchWa(BuildContext context, String message) async {
     final encoded = Uri.encodeComponent('$message\n\n(via Kostraktor App)');
-    final url = Uri.parse('https://wa.me/6281234567890?text=$encoded');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } else if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Tidak dapat membuka WhatsApp. Hubungi 081234567890')),
-      );
+    final waUrl = Uri.parse('https://wa.me/6281234567890?text=$encoded');
+    final waDeepLink = Uri.parse('whatsapp://send?phone=6281234567890&text=$encoded');
+
+    try {
+      final launched = await launchUrl(waUrl, mode: LaunchMode.externalApplication);
+      if (!launched) {
+        await launchUrl(waDeepLink, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {
+      try {
+        await launchUrl(waDeepLink, mode: LaunchMode.externalApplication);
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('WhatsApp tidak ditemukan. Pastikan WA sudah terinstall.'),
+            ),
+          );
+        }
+      }
     }
   }
 

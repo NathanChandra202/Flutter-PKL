@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../utils/app_theme.dart';
+import '../utils/whatsapp_helper.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
 import 'admin_panel_screen.dart';
@@ -203,25 +203,13 @@ class ProfileScreen extends StatelessWidget {
               _menuTile(Icons.support_agent, 'Hubungi Manajemen', () async {
                 final name = auth.userName ?? 'Penghuni';
                 final room = auth.assignedRoom ?? 'kamar saya';
-                final message = Uri.encodeComponent(
-                  'Halo Admin Kostraktor, saya $name ($room) ingin menghubungi manajemen.',
+                final message =
+                    'Halo Admin Kostraktor, saya $name ($room) ingin menghubungi manajemen.';
+
+                await WhatsAppHelper.contactAdminGeneral(
+                  context: context,
+                  customMessage: message,
                 );
-                final url = Uri.parse(
-                  'https://wa.me/6281234567890?text=$message',
-                );
-                if (await canLaunchUrl(url)) {
-                  await launchUrl(url, mode: LaunchMode.externalApplication);
-                } else {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Tidak dapat membuka WhatsApp. Hubungi 081234567890',
-                        ),
-                      ),
-                    );
-                  }
-                }
               }),
               const SizedBox(height: 12),
             ] else if (auth.isPendingResident) ...[
@@ -297,25 +285,13 @@ class ProfileScreen extends StatelessWidget {
               const SizedBox(height: 12),
               _menuTile(Icons.chat, 'Chat Penjaga Kos via WA', () async {
                 final booking = auth.bookingData;
-                final message = Uri.encodeComponent(
-                  'Halo Kak Admin Kostraktor\n\nSaya ${booking?.nama ?? auth.userName ?? 'pengguna'} ingin menanyakan status booking saya (${booking?.roomType ?? 'unit'}).\n\nMohon bantuannya ya, terima kasih',
+                final message =
+                    'Halo Kak Admin Kostraktor\n\nSaya ${booking?.nama ?? auth.userName ?? 'pengguna'} ingin menanyakan status booking saya (${booking?.roomType ?? 'unit'}).\n\nMohon bantuannya ya, terima kasih';
+
+                await WhatsAppHelper.contactAdminGeneral(
+                  context: context,
+                  customMessage: message,
                 );
-                final url = Uri.parse(
-                  'https://wa.me/6281234567890?text=$message',
-                );
-                if (await canLaunchUrl(url)) {
-                  await launchUrl(url, mode: LaunchMode.externalApplication);
-                } else {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Tidak dapat membuka WhatsApp. Hubungi 081234567890',
-                        ),
-                      ),
-                    );
-                  }
-                }
               }),
               const SizedBox(height: 12),
             ] else ...[
@@ -350,13 +326,26 @@ class ProfileScreen extends StatelessWidget {
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: () => _showCheckOutDialog(context, auth),
-                  icon: const Icon(Icons.logout_outlined, color: Colors.deepOrange),
-                  label: const Text('Check Out',
-                      style: TextStyle(color: Colors.deepOrange, fontWeight: FontWeight.bold)),
+                  icon: const Icon(
+                    Icons.logout_outlined,
+                    color: Colors.deepOrange,
+                  ),
+                  label: const Text(
+                    'Check Out',
+                    style: TextStyle(
+                      color: Colors.deepOrange,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.deepOrange, width: 1.5),
+                    side: const BorderSide(
+                      color: Colors.deepOrange,
+                      width: 1.5,
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     backgroundColor: Colors.deepOrange.withOpacity(0.05),
                   ),
                 ),
@@ -657,8 +646,10 @@ class ProfileScreen extends StatelessWidget {
           children: [
             const Icon(Icons.warning_amber_rounded, color: Colors.deepOrange),
             const SizedBox(width: 8),
-            const Text('Yakin ingin Check Out?',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const Text(
+              'Yakin ingin Check Out?',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
           ],
         ),
         content: Column(
@@ -668,7 +659,10 @@ class ProfileScreen extends StatelessWidget {
             Text(
               'Dengan melakukan check out:',
               style: TextStyle(
-                  color: Colors.grey.shade700, fontWeight: FontWeight.w600, fontSize: 13),
+                color: Colors.grey.shade700,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
             ),
             const SizedBox(height: 8),
             _checkOutBullet('Kontrak sewa Anda akan berakhir'),
@@ -685,7 +679,10 @@ class ProfileScreen extends StatelessWidget {
               child: Text(
                 'Tindakan ini tidak dapat dibatalkan. Hubungi admin jika ada pertanyaan sebelum melanjutkan.',
                 style: TextStyle(
-                    color: Colors.deepOrange.shade800, fontSize: 12, height: 1.4),
+                  color: Colors.deepOrange.shade800,
+                  fontSize: 12,
+                  height: 1.4,
+                ),
               ),
             ),
           ],
@@ -693,14 +690,19 @@ class ProfileScreen extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal', style: TextStyle(color: AppTheme.textMuted)),
+            child: const Text(
+              'Batal',
+              style: TextStyle(color: AppTheme.textMuted),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.deepOrange,
               foregroundColor: Colors.white,
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             onPressed: () {
               Navigator.pop(ctx);
@@ -720,10 +722,23 @@ class ProfileScreen extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('• ', style: TextStyle(color: Colors.deepOrange, fontWeight: FontWeight.bold)),
+          const Text(
+            '• ',
+            style: TextStyle(
+              color: Colors.deepOrange,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           Expanded(
-              child: Text(text,
-                  style: TextStyle(color: Colors.grey.shade700, fontSize: 12, height: 1.4))),
+            child: Text(
+              text,
+              style: TextStyle(
+                color: Colors.grey.shade700,
+                fontSize: 12,
+                height: 1.4,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -736,14 +751,18 @@ class ProfileScreen extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Konfirmasi Check Out',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        title: const Text(
+          'Konfirmasi Check Out',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Alasan check out (opsional):',
-                style: TextStyle(color: AppTheme.textMuted, fontSize: 13)),
+            const Text(
+              'Alasan check out (opsional):',
+              style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+            ),
             const SizedBox(height: 8),
             TextField(
               controller: reasonController,
@@ -751,7 +770,10 @@ class ProfileScreen extends StatelessWidget {
               style: const TextStyle(fontSize: 13),
               decoration: InputDecoration(
                 hintText: 'Contoh: Pindah kerja, kontrak selesai, dsb.',
-                hintStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                hintStyle: const TextStyle(
+                  color: AppTheme.textMuted,
+                  fontSize: 12,
+                ),
                 filled: true,
                 fillColor: Colors.grey.shade50,
                 contentPadding: const EdgeInsets.all(12),
@@ -773,14 +795,19 @@ class ProfileScreen extends StatelessWidget {
               reasonController.dispose();
               Navigator.pop(ctx);
             },
-            child: const Text('Batal', style: TextStyle(color: AppTheme.textMuted)),
+            child: const Text(
+              'Batal',
+              style: TextStyle(color: AppTheme.textMuted),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red.shade700,
               foregroundColor: Colors.white,
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             onPressed: () {
               reasonController.dispose();
@@ -790,7 +817,9 @@ class ProfileScreen extends StatelessWidget {
               // Show snackbar then navigate to login
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Check out berhasil. Terima kasih telah tinggal di Kostraktor!'),
+                  content: Text(
+                    'Check out berhasil. Terima kasih telah tinggal di Kostraktor!',
+                  ),
                   backgroundColor: Colors.deepOrange,
                 ),
               );
@@ -800,8 +829,10 @@ class ProfileScreen extends StatelessWidget {
                 (route) => false,
               );
             },
-            child: const Text('KONFIRMASI CHECK OUT',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            child: const Text(
+              'KONFIRMASI CHECK OUT',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+            ),
           ),
         ],
       ),
@@ -1187,5 +1218,4 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
   }
-
 }

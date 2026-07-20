@@ -232,20 +232,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 final message = Uri.encodeComponent(
                   'Halo Admin Kostraktor, saya $name ($room) ingin menghubungi manajemen.',
                 );
-                final url = Uri.parse(
-                  'https://wa.me/6281234567890?text=$message',
-                );
-                if (await canLaunchUrl(url)) {
-                  await launchUrl(url, mode: LaunchMode.externalApplication);
-                } else {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Tidak dapat membuka WhatsApp. Hubungi 081234567890',
+                final waUrl = Uri.parse('https://wa.me/6281234567890?text=$message');
+                final waDeepLink = Uri.parse('whatsapp://send?phone=6281234567890&text=$message');
+                try {
+                  final launched = await launchUrl(waUrl, mode: LaunchMode.externalApplication);
+                  if (!launched) await launchUrl(waDeepLink, mode: LaunchMode.externalApplication);
+                } catch (_) {
+                  try {
+                    await launchUrl(waDeepLink, mode: LaunchMode.externalApplication);
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('WhatsApp tidak ditemukan. Pastikan WA sudah terinstall.'),
                         ),
-                      ),
-                    );
+                      );
+                    }
                   }
                 }
               }),
@@ -326,20 +328,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 final message = Uri.encodeComponent(
                   'Halo Kak Admin Kostraktor\n\nSaya ${booking?.nama ?? auth.userName ?? 'pengguna'} ingin menanyakan status booking saya (${booking?.roomType ?? 'unit'}).\n\nMohon bantuannya ya, terima kasih',
                 );
-                final url = Uri.parse(
-                  'https://wa.me/6281234567890?text=$message',
-                );
-                if (await canLaunchUrl(url)) {
-                  await launchUrl(url, mode: LaunchMode.externalApplication);
-                } else {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Tidak dapat membuka WhatsApp. Hubungi 081234567890',
+                final waUrl = Uri.parse('https://wa.me/6281234567890?text=$message');
+                final waDeepLink = Uri.parse('whatsapp://send?phone=6281234567890&text=$message');
+                try {
+                  final launched = await launchUrl(waUrl, mode: LaunchMode.externalApplication);
+                  if (!launched) await launchUrl(waDeepLink, mode: LaunchMode.externalApplication);
+                } catch (_) {
+                  try {
+                    await launchUrl(waDeepLink, mode: LaunchMode.externalApplication);
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('WhatsApp tidak ditemukan. Pastikan WA sudah terinstall.'),
                         ),
-                      ),
-                    );
+                      );
+                    }
                   }
                 }
               }),

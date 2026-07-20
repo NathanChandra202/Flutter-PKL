@@ -126,7 +126,12 @@ class AuthProvider extends ChangeNotifier {
   String? _assignedRoom;
   String? _accessToken;
 
-  static const String _baseUrl = 'http://192.168.1.40:8000/api/v1';
+  // PENTING: Sesuaikan URL backend berikut:
+  //   - Emulator Android       : gunakan 10.0.2.2  (alias ke 127.0.0.1 PC)
+  //   - Device fisik (HP nyata): gunakan IP lokal PC, cth: 192.168.101.15
+  //   - Web/Desktop Flutter    : gunakan 127.0.0.1
+  // SYARAT device fisik: HP & PC harus konek ke WiFi yang SAMA!
+  static const String _baseUrl = 'http://192.168.101.15:8000/api/v1';
 
   // Simulated user database (for registration)
   final Map<String, Map<String, String>> _registeredUsers = {
@@ -405,8 +410,12 @@ class AuthProvider extends ChangeNotifier {
 
     // Always add to local pending approvals queue so Admin can see the full data
     // (including images which aren't saved to the backend)
-    final emailForQueue = _userEmail ?? 'guest_${DateTime.now().millisecondsSinceEpoch}@example.com';
-    _pendingApprovals.removeWhere((p) => p.email == emailForQueue || p.name == data.nama);
+    final emailForQueue =
+        _userEmail ??
+        'guest_${DateTime.now().millisecondsSinceEpoch}@example.com';
+    _pendingApprovals.removeWhere(
+      (p) => p.email == emailForQueue || p.name == data.nama,
+    );
     _pendingApprovals.add(
       PendingUser(
         email: emailForQueue,
