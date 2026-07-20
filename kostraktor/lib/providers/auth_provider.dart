@@ -131,7 +131,7 @@ class AuthProvider extends ChangeNotifier {
   //   - Device fisik (HP nyata): gunakan IP lokal PC, cth: 192.168.101.15
   //   - Web/Desktop Flutter    : gunakan 127.0.0.1
   // SYARAT device fisik: HP & PC harus konek ke WiFi yang SAMA!
-  static const String _baseUrl = 'http://192.168.101.15:8000/api/v1';
+  static const String _baseUrl = 'http://127.0.0.1:8000/api/v1';
 
   // Simulated user database (for registration)
   final Map<String, Map<String, String>> _registeredUsers = {
