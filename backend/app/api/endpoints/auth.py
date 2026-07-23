@@ -1,8 +1,10 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
+from google.oauth2 import id_token as google_id_token
+from google.auth.transport import requests as google_requests
 
 from app.api import deps
 from app.core import security
@@ -22,6 +24,9 @@ class UserCreate(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+class GoogleLoginRequest(BaseModel):
+    id_token: str
 
 @router.post("/register", response_model=dict)
 def register(user_in: UserCreate, db: Session = Depends(deps.get_db)):
@@ -67,6 +72,55 @@ def login(db: Session = Depends(deps.get_db), form_data: OAuth2PasswordRequestFo
     elif not user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
         
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = security.create_access_token(
+        subject=user.id, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@router.post("/google", response_model=Token)
+def google_login(payload: GoogleLoginRequest, db: Session = Depends(deps.get_db)):
+    try:
+        idinfo = google_id_token.verify_oauth2_token(
+            payload.id_token, google_requests.Request()
+        )
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid Google token")
+
+    email = idinfo["email"]
+    nama = idinfo.get("name", email.split("@")[0])
+
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        role = db.query(Role).filter(Role.name == "Customer").first()
+        if not role:
+            role = Role(name="Customer")
+            db.add(role)
+            db.commit()
+            db.refresh(role)
+        
+        # Placeholder hash that can never be guessed
+        placeholder_hash = security.get_password_hash(f"google_{email}_{datetime.now().timestamp()}")
+        
+        user = User(
+            email=email,
+            password_hash=placeholder_hash,
+            role_id=role.id
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        
+        profile = UserProfile(
+            user_id=user.id,
+            nama_lengkap=nama,
+            nik=None
+        )
+        db.add(profile)
+        db.commit()
+    elif not user.is_active:
+        raise HTTPException(status_code=400, detail="Inactive user")
+
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = security.create_access_token(
         subject=user.id, expires_delta=access_token_expires

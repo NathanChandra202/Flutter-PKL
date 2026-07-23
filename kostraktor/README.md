@@ -13,6 +13,28 @@ flutter run -d chrome
 
 ---
 
+## build per environment (dev / prod)
+
+Environment ditentukan lewat `--dart-define=ENV=...`. Elemen demo UI (kotak kredensial di login, tombol simulasi admin di profil) hanya muncul saat `ENV=dev`.
+
+```bash
+# Dev — elemen demo tetap muncul
+flutter build apk --release --dart-define=ENV=dev --dart-define=API_BASE_URL=http://dev-api.kostraktor.duaenam.id/api/v1
+
+# Prod — elemen demo disembunyikan
+flutter build apk --release --dart-define=ENV=prod --dart-define=API_BASE_URL=http://dev-api.kostraktor.duaenam.id/api/v1
+```
+
+Ganti `API_BASE_URL` prod nanti saat server production terpisah sudah tersedia. Override `API_BASE_URL` selalu diprioritaskan di atas default environment.
+
+Untuk backend lokal (emulator Android):
+
+```bash
+flutter run --dart-define=ENV=dev --dart-define=API_BASE_URL=http://10.0.2.2:8000/api/v1
+```
+
+---
+
 ## akun buat nyoba
 
 | role | email | password |

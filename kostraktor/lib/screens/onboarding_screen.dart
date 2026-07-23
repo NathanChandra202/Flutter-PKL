@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../utils/app_constants.dart';
 import '../utils/app_theme.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
@@ -218,7 +219,7 @@ class _KostraktorLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Image.network(
-      'https://tesmohamadasep.sirv.com/duaenam-grp-source/assets/logo/kostraktor.jpeg',
+      kLogoUrl,
       height: size,
       errorBuilder: (ctx, _, __) => Text(
         'Kostraktor',

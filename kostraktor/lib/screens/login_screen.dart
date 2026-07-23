@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../config/app_env.dart';
+import '../utils/app_constants.dart';
 import '../utils/app_theme.dart';
 import '../providers/auth_provider.dart';
 import 'main_navigation.dart';
@@ -50,7 +52,7 @@ class _LoginScreenState extends State<LoginScreen>
                   ),
                   const Spacer(),
                   Image.network(
-                    'https://tesmohamadasep.sirv.com/duaenam-grp-source/assets/logo/kostraktor.jpeg',
+                    kLogoUrl,
                     height: 28,
                     errorBuilder: (_, __, ___) => const Text(
                       'Kostraktor',
@@ -164,6 +166,36 @@ class _LoginFormState extends State<_LoginForm> {
     }
   }
 
+  void _handleGoogleLogin() async {
+    setState(() => _isLoading = true);
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final error = await auth.signInWithGoogle();
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (error == null) {
+      Widget dest;
+      if (auth.currentRole == UserRole.admin) {
+        dest = const AdminPanelScreen();
+      } else {
+        dest = const MainNavigation();
+      }
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => dest),
+        (route) => false,
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -195,27 +227,6 @@ class _LoginFormState extends State<_LoginForm> {
           ),
           const SizedBox(height: 32),
 
-          // Credentials hint
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.blue.shade50,
-              border: Border.all(color: Colors.blue.shade200),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Akun Demo:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.blue.shade900)),
-                const SizedBox(height: 6),
-                Text('Calon Penghuni: calon@kostraktor.com | 123456',
-                    style: TextStyle(fontSize: 11, color: Colors.blue.shade700)),
-                Text('Admin: admin@kostraktor.com | admin123',
-                    style: TextStyle(fontSize: 11, color: Colors.blue.shade700)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
 
           // Email
           _InputField(
@@ -316,6 +327,28 @@ class _LoginFormState extends State<_LoginForm> {
           ),
 
           const SizedBox(height: 16),
+          
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                side: BorderSide(color: Colors.grey.shade300),
+                foregroundColor: AppTheme.primaryBlack,
+              ),
+              onPressed: _isLoading ? null : _handleGoogleLogin,
+              icon: Image.network(
+                'https://cdn1.iconfinder.com/data/icons/google-s-logo/150/Google_Icons-09-512.png',
+                height: 24,
+                errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.g_mobiledata, size: 28, color: Colors.blue),
+              ),
+              label: const Text('Masuk dengan Google', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            ),
+          ),
+
+          const SizedBox(height: 16),
           Center(
             child: TextButton(
               onPressed: () => Navigator.pushReplacement(
@@ -359,19 +392,18 @@ class _RegisterFormState extends State<_RegisterForm> {
     final confirm = _confirmPasswordController.text;
 
     // Validasi nama: minimal 3 kata, hanya huruf dan spasi
-    final namaWords = nama.split(' ').where((w) => w.isNotEmpty).toList();
-    if (namaWords.length < 3) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nama lengkap minimal 3 kata.'), backgroundColor: Colors.redAccent),
-      );
-      return;
-    }
-    if (!RegExp(r'^[a-zA-Z\s]+$').hasMatch(nama)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nama hanya boleh mengandung huruf.'), backgroundColor: Colors.redAccent),
-      );
-      return;
-    }
+     if (nama.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Nama lengkap wajib diisi.'), backgroundColor: Colors.redAccent),
+    );
+    return;
+  }
+  if (!RegExp(r'^[a-zA-Z\s]+$').hasMatch(nama)) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Nama hanya boleh mengandung huruf.'), backgroundColor: Colors.redAccent),
+    );
+    return;
+  }
 
     // Validasi password min 8 karakter + huruf & angka
     final hasLetter = RegExp(r'[a-zA-Z]').hasMatch(password);
@@ -467,6 +499,36 @@ class _RegisterFormState extends State<_RegisterForm> {
     }
   }
 
+  void _handleGoogleLogin() async {
+    setState(() => _isLoading = true);
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final error = await auth.signInWithGoogle();
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (error == null) {
+      Widget dest;
+      if (auth.currentRole == UserRole.admin) {
+        dest = const AdminPanelScreen();
+      } else {
+        dest = const MainNavigation();
+      }
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => dest),
+        (route) => false,
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
   @override
   void dispose() {
     _namaController.dispose();
@@ -539,6 +601,28 @@ class _RegisterFormState extends State<_RegisterForm> {
               child: _isLoading
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                   : const Text('DAFTAR SEKARANG', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+          
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                side: BorderSide(color: Colors.grey.shade300),
+                foregroundColor: AppTheme.primaryBlack,
+              ),
+              onPressed: _isLoading ? null : _handleGoogleLogin,
+              icon: Image.network(
+                'https://cdn1.iconfinder.com/data/icons/google-s-logo/150/Google_Icons-09-512.png',
+                height: 24,
+                errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.g_mobiledata, size: 28, color: Colors.blue),
+              ),
+              label: const Text('Masuk dengan Google', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
             ),
           ),
 

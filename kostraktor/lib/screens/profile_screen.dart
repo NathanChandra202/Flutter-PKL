@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../config/app_env.dart';
 import '../utils/app_theme.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
@@ -360,18 +361,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _showPengaturanSheet(context, auth);
             }),
             const SizedBox(height: 12),
-            // Tombol simulasi admin untuk demo interview
-            _menuTile(
-              Icons.admin_panel_settings_outlined,
-              'Simulasi Akun Admin (Demo)',
-              () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AdminPanelScreen()),
-                );
-              },
-              trailingColor: Colors.blue,
-            ),
+
             const SizedBox(height: 40),
 
             // Check Out button — only for active residents (not admin)

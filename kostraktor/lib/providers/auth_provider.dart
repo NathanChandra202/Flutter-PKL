@@ -2,6 +2,9 @@ import 'dart:math';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:google_sign_in/google_sign_in.dart';
+
+import '../config/app_env.dart';
 
 /// Roles in the app
 /// - [guest]           : browsing only, not logged in
@@ -126,12 +129,25 @@ class AuthProvider extends ChangeNotifier {
   String? _assignedRoom;
   String? _accessToken;
 
-  // PENTING: Sesuaikan URL backend berikut:
-  //   - Emulator Android       : gunakan 10.0.2.2  (alias ke 127.0.0.1 PC)
-  //   - Device fisik (HP nyata): gunakan IP lokal PC, cth: 192.168.101.15
-  //   - Web/Desktop Flutter    : gunakan 127.0.0.1
-  // SYARAT device fisik: HP & PC harus konek ke WiFi yang SAMA!
-  static const String _baseUrl = 'http://127.0.0.1:8000/api/v1';
+  // Override manual: --dart-define=API_BASE_URL=http://...
+  // Emulator Android (dev lokal): http://10.0.2.2:8000/api/v1
+  // Web/Desktop Flutter (dev lokal): http://127.0.0.1:8000/api/v1
+  static const String _apiBaseUrlOverride = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: '',
+  );
+
+  static const String _devDefaultBaseUrl =
+      'http://dev-api.kostraktor.duaenam.id/api/v1';
+
+  // Sementara sama dengan dev; ganti saat URL prod terpisah tersedia.
+  static const String _prodDefaultBaseUrl =
+      'http://dev-api.kostraktor.duaenam.id/api/v1';
+
+  static String get _baseUrl {
+    if (_apiBaseUrlOverride.isNotEmpty) return _apiBaseUrlOverride;
+    return AppEnv.isProd ? _prodDefaultBaseUrl : _devDefaultBaseUrl;
+  }
 
   // Simulated user database (for registration)
   final Map<String, Map<String, String>> _registeredUsers = {
@@ -333,14 +349,87 @@ class AuthProvider extends ChangeNotifier {
           notifyListeners();
           return null; // success
         } else {
-          return 'Gagal memuat profil pengguna.';
+          final errData = json.decode(profileResponse.body);
+          return errData['detail'] ?? 'Gagal mengambil profil';
         }
       } else {
-        final error = json.decode(response.body);
-        return error['detail'] ?? 'Email atau password salah.';
+        final data = json.decode(response.body);
+        return data['detail'] ?? 'Kredensial salah atau pengguna tidak aktif';
       }
     } catch (e) {
-      return 'Terjadi kesalahan koneksi. Pastikan server backend menyala.';
+      return 'Gagal terhubung ke server. Pastikan URL server benar dan server menyala.';
+    }
+  }
+
+   Future<String?> signInWithGoogle() async {
+    try {
+      final googleSignIn = GoogleSignIn(
+        serverClientId: '926017391118-jiamtuuvigpkcat4gj83bv1pqqq21e6d.apps.googleusercontent.com',
+      );
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+
+      if (googleUser == null) {
+        return 'Pilih akun dibatalkan';
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      
+      final String? idToken = googleAuth.idToken;
+
+      if (idToken == null) {
+        return 'Gagal mendapatkan token Google';
+      }
+
+      final response = await http.post(
+        Uri.parse('$_baseUrl/auth/google'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'id_token': idToken}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        _accessToken = data['access_token'];
+
+        // Fetch user profile
+        final profileResponse = await http.get(
+          Uri.parse('$_baseUrl/auth/me'),
+          headers: {'Authorization': 'Bearer $_accessToken'},
+        );
+
+        if (profileResponse.statusCode == 200) {
+          final profile = json.decode(profileResponse.body);
+          _userEmail = profile['email'];
+          _userName = profile['nama_lengkap'];
+          _currentRole = _parseRole(profile['role'] ?? 'Customer');
+
+          // --- LOCAL OVERRIDE ---
+          if (_registeredUsers.containsKey(_userEmail)) {
+            final localRole = _registeredUsers[_userEmail!]?['role'];
+            if (localRole != null && localRole != 'calon') {
+              _currentRole = _parseRole(localRole);
+            }
+            _assignedRoom = _registeredUsers[_userEmail!]?['room'] as String?;
+          } else {
+            // Ensure they exist in local cache
+            _registeredUsers[_userEmail!] = {
+              'password': '',
+              'nama': _userName ?? '',
+              'role': _currentRole == UserRole.admin ? 'admin' : 'calon',
+            };
+          }
+
+          notifyListeners();
+          return null; // success
+        } else {
+          final errData = json.decode(profileResponse.body);
+          return errData['detail'] ?? 'Gagal mengambil profil';
+        }
+      } else {
+        final data = json.decode(response.body);
+        return data['detail'] ?? 'Gagal verifikasi token Google';
+      }
+    } catch (e) {
+      return 'Terjadi kesalahan: $e';
     }
   }
 

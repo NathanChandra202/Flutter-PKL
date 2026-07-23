@@ -24,6 +24,7 @@ flask-cors
 flatbuffers
 gast
 gdown
+google-auth
 google-pasta
 greenlet
 grpcio

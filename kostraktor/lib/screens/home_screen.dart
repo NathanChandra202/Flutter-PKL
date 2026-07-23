@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../utils/app_constants.dart';
 import '../utils/app_theme.dart';
 import '../providers/auth_provider.dart';
 import 'detail_screen.dart';
@@ -104,7 +105,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Image.network(
-                        'https://tesmohamadasep.sirv.com/duaenam-grp-source/assets/logo/kostraktor.jpeg',
+                        kLogoUrl,
                         height: 24,
                         errorBuilder: (context, error, stackTrace) =>
                             const Text(
@@ -287,17 +288,21 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (filtered.isEmpty) {
                     return _buildEmptyState();
                   }
-                  return GridView.builder(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          mainAxisSpacing: 14,
-                          crossAxisSpacing: 14,
-                          childAspectRatio: 0.72,
-                        ),
-                    itemCount: filtered.length,
-                    itemBuilder: (context, i) => _UnitCard(unit: filtered[i]),
+                  return RefreshIndicator(
+                    onRefresh: _loadRooms,
+                    color: AppTheme.primaryBlack,
+                    child: GridView.builder(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            mainAxisSpacing: 14,
+                            crossAxisSpacing: 14,
+                            childAspectRatio: 0.72,
+                          ),
+                      itemCount: filtered.length,
+                      itemBuilder: (context, i) => _UnitCard(unit: filtered[i]),
+                    ),
                   );
                 },
               ),

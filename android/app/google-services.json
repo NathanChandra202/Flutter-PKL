@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "926017391118",
+    "project_id": "kostraktor-c1716",
+    "storage_bucket": "kostraktor-c1716.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:926017391118:android:f6b5efb1fceb8a320b8a5f",
+        "android_client_info": {
+          "package_name": "com.example.kostraktor"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "926017391118-jiamtuuvigpkcat4gj83bv1pqqq21e6d.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCrl6ElcP-iLYWYyRcRsDPsgwOh2XvC_-I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "926017391118-jiamtuuvigpkcat4gj83bv1pqqq21e6d.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
