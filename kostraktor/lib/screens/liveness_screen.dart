@@ -39,6 +39,10 @@ class _LivenessScreenState extends State<LivenessScreen> {
   Uint8List? _ktpBytesRaw;   // without watermark (for backend)
   Uint8List? _selfieBytes;
 
+  /// True while the KTP watermark is being applied + transitioning to the
+  /// selfie step. Distinct from any processing flag on the selfie side.
+  bool _isPreparingFaceCapture = false;
+
   @override
   void initState() {
     super.initState();
@@ -53,11 +57,17 @@ class _LivenessScreenState extends State<LivenessScreen> {
       preferredCameraDevice: CameraDevice.rear,
     );
     if (picked == null) return;
+
+    // Show loading overlay while watermark is being applied
+    setState(() => _isPreparingFaceCapture = true);
+
     final rawBytes = await picked.readAsBytes();
     final watermarked = await _applyKtpWatermark(rawBytes);
+
     setState(() {
       _ktpBytesRaw = rawBytes;   // preserve original for backend
       _ktpBytes = watermarked;   // watermarked for display
+      _isPreparingFaceCapture = false;
       _step = 1;
     });
   }
@@ -199,7 +209,7 @@ class _LivenessScreenState extends State<LivenessScreen> {
 
           // Preview or placeholder
           GestureDetector(
-            onTap: () => _pickKtp(),
+            onTap: _isPreparingFaceCapture ? null : () => _pickKtp(),
             child: Container(
               height: 180,
               decoration: BoxDecoration(
@@ -210,40 +220,84 @@ class _LivenessScreenState extends State<LivenessScreen> {
                   width: _ktpBytes != null ? 2 : 1,
                 ),
               ),
-              child: _ktpBytes != null
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(15),
-                      child: Stack(
-                        fit: StackFit.expand,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(15),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // Base content: captured photo or placeholder
+                    if (_ktpBytes != null)
+                      Image.memory(_ktpBytes!, fit: BoxFit.cover)
+                    else
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Image.memory(_ktpBytes!, fit: BoxFit.cover),
-                          Positioned(
-                            top: 8, right: 8,
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                  color: Colors.green.shade600, shape: BoxShape.circle),
-                              child: const Icon(Icons.check, color: Colors.white, size: 16),
-                            ),
-                          ),
+                          Icon(Icons.credit_card, size: 48, color: Colors.grey.shade300),
+                          const SizedBox(height: 12),
+                          const Text('Ketuk untuk foto KTP',
+                              style: TextStyle(
+                                  color: AppTheme.primaryBlack,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14)),
+                          const SizedBox(height: 4),
+                          Text('Gunakan kamera belakang',
+                              style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
                         ],
                       ),
-                    )
-                  : Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.credit_card, size: 48, color: Colors.grey.shade300),
-                        const SizedBox(height: 12),
-                        const Text('Ketuk untuk foto KTP',
-                            style: TextStyle(
-                                color: AppTheme.primaryBlack,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14)),
-                        const SizedBox(height: 4),
-                        Text('Gunakan kamera belakang',
-                            style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
-                      ],
-                    ),
+
+                    // Checkmark when done (hidden during loading)
+                    if (_ktpBytes != null && !_isPreparingFaceCapture)
+                      Positioned(
+                        top: 8, right: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                              color: Colors.green.shade600, shape: BoxShape.circle),
+                          child: const Icon(Icons.check, color: Colors.white, size: 16),
+                        ),
+                      ),
+
+                    // ── Loading overlay: semi-transparent, shows during watermark processing ──
+                    if (_isPreparingFaceCapture)
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.55),
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const SizedBox(
+                              width: 36,
+                              height: 36,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 3,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            const Text(
+                              'Memproses foto KTP...',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Bersiap mengambil foto wajah',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.75),
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -289,7 +343,7 @@ class _LivenessScreenState extends State<LivenessScreen> {
             ],
           ),
 
-          if (_ktpBytes != null) ...[
+          if (_ktpBytes != null && !_isPreparingFaceCapture) ...[
             const SizedBox(height: 12),
             ElevatedButton(
               style: ElevatedButton.styleFrom(

@@ -1,5 +1,9 @@
+import os
+import shutil
+import uuid
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
@@ -8,12 +12,17 @@ from app.models.kost import KostRoom
 
 router = APIRouter()
 
+UPLOAD_DIR = "uploads"
+ROOMS_UPLOAD_DIR = os.path.join(UPLOAD_DIR, "rooms")
+ALLOWED_IMAGE_EXTENSIONS = ("jpg", "jpeg", "png", "webp")
+
 class RoomBase(BaseModel):
     name: str
     description: str
     price_per_month: float
     is_available: bool = True
     image_url: Optional[str] = None
+    additional_images: Optional[str] = None
     facilities: Optional[str] = None
     room_type: Optional[str] = None
 
@@ -26,6 +35,7 @@ class RoomUpdate(BaseModel):
     price_per_month: Optional[float] = None
     is_available: Optional[bool] = None
     image_url: Optional[str] = None
+    additional_images: Optional[str] = None
     facilities: Optional[str] = None
     room_type: Optional[str] = None
 
@@ -52,6 +62,7 @@ def create_room(room_in: RoomCreate, db: Session = Depends(deps.get_db)):
         price_per_month=room_in.price_per_month,
         is_available=room_in.is_available,
         image_url=room_in.image_url,
+        additional_images=room_in.additional_images,
         facilities=room_in.facilities,
         room_type=room_in.room_type
     )
@@ -73,6 +84,63 @@ def update_room(room_id: int, room_in: RoomUpdate, db: Session = Depends(deps.ge
     db.commit()
     db.refresh(room)
     return room
+
+def _parse_image_list(raw: Optional[str]) -> List[str]:
+    if not raw:
+        return []
+    return [img.strip() for img in raw.split(",") if img.strip()]
+
+
+@router.post("/{room_id}/upload-images")
+async def upload_room_images(
+    room_id: int,
+    files: List[UploadFile] = File(...),
+    db: Session = Depends(deps.get_db),
+):
+    room = db.query(KostRoom).filter(KostRoom.id == room_id).first()
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+
+    os.makedirs(ROOMS_UPLOAD_DIR, exist_ok=True)
+    saved_urls: List[str] = []
+
+    for file in files:
+        ext = (file.filename or "image.jpg").split(".")[-1].lower()
+        if ext not in ALLOWED_IMAGE_EXTENSIONS:
+            ext = "jpg"
+
+        filename = f"{uuid.uuid4()}.{ext}"
+        filepath = os.path.join(ROOMS_UPLOAD_DIR, filename)
+
+        with open(filepath, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        saved_urls.append(f"/uploads/rooms/{filename}")
+
+    existing = _parse_image_list(room.additional_images)
+    all_images = existing + saved_urls
+    room.additional_images = ",".join(all_images) if all_images else None
+    db.commit()
+    db.refresh(room)
+    return {"additional_images": all_images}
+
+
+@router.delete("/{room_id}/images")
+def delete_room_image(
+    room_id: int,
+    image_url: str,
+    db: Session = Depends(deps.get_db),
+):
+    room = db.query(KostRoom).filter(KostRoom.id == room_id).first()
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+
+    existing = _parse_image_list(room.additional_images)
+    existing = [img for img in existing if img != image_url]
+    room.additional_images = ",".join(existing) if existing else None
+    db.commit()
+    return {"additional_images": existing}
+
 
 @router.delete("/{room_id}")
 def delete_room(room_id: int, db: Session = Depends(deps.get_db)):

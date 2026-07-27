@@ -346,6 +346,14 @@ class AuthProvider extends ChangeNotifier {
             };
           }
 
+          // --- RESTORE BOOKING DATA ---
+          final pending = _pendingApprovals.where((p) => p.email == _userEmail).firstOrNull;
+          if (pending != null) {
+            _bookingData = pending.bookingData;
+            _currentRole = UserRole.pendingResident;
+            _registeredUsers[_userEmail!]?['role'] = 'pendingResident';
+          }
+
           notifyListeners();
           return null; // success
         } else {
@@ -418,6 +426,14 @@ class AuthProvider extends ChangeNotifier {
             };
           }
 
+          // --- RESTORE BOOKING DATA ---
+          final pending = _pendingApprovals.where((p) => p.email == _userEmail).firstOrNull;
+          if (pending != null) {
+            _bookingData = pending.bookingData;
+            _currentRole = UserRole.pendingResident;
+            _registeredUsers[_userEmail!]?['role'] = 'pendingResident';
+          }
+
           notifyListeners();
           return null; // success
         } else {
@@ -475,6 +491,10 @@ class AuthProvider extends ChangeNotifier {
   Future<void> submitBooking(BookingData data) async {
     _bookingData = data;
     _currentRole = UserRole.pendingResident;
+    
+    if (_userEmail != null && _registeredUsers.containsKey(_userEmail)) {
+      _registeredUsers[_userEmail!]!['role'] = 'pendingResident';
+    }
 
     if (_accessToken != null) {
       try {
@@ -617,18 +637,92 @@ class AuthProvider extends ChangeNotifier {
     return [];
   }
 
-  Future<bool> createRoom(Map<String, dynamic> data) async {
+  String get apiOrigin => _baseUrl.replaceAll(RegExp(r'/api/v1/?$'), '');
+
+  String resolveMediaUrl(String url) {
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    if (url.startsWith('/')) return '$apiOrigin$url';
+    return '$apiOrigin/$url';
+  }
+
+  Future<Map<String, dynamic>?> createRoom(Map<String, dynamic> data) async {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/rooms/'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(data),
       );
-      return response.statusCode == 200 || response.statusCode == 201;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
     } catch (e) {
       print('Error creating room: $e');
+    }
+    return null;
+  }
+
+  Future<List<String>?> uploadRoomImages(
+    int roomId,
+    List<Uint8List> imageBytes, {
+    List<String>? filenames,
+  }) async {
+    if (imageBytes.isEmpty) return [];
+
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$_baseUrl/rooms/$roomId/upload-images'),
+      );
+
+      for (var i = 0; i < imageBytes.length; i++) {
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'files',
+            imageBytes[i],
+            filename: filenames?[i] ?? 'room_$i.jpg',
+          ),
+        );
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        final images = data['additional_images'];
+        if (images is List) {
+          return images.map((e) => e.toString()).toList();
+        }
+      }
+    } catch (e) {
+      print('Error uploading room images: $e');
+    }
+    return null;
+  }
+
+  Future<bool> deleteRoomImage(int roomId, String imageUrl) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/rooms/$roomId/images').replace(
+        queryParameters: {'image_url': imageUrl},
+      );
+      final response = await http.delete(uri);
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Error deleting room image: $e');
       return false;
     }
+  }
+
+  Future<bool> syncRoomImageFields(int roomId, List<String> allUrls) async {
+    if (allUrls.isEmpty) {
+      return updateRoom(roomId, {'image_url': '', 'additional_images': ''});
+    }
+
+    return updateRoom(roomId, {
+      'image_url': allUrls.first,
+      'additional_images':
+          allUrls.length > 1 ? allUrls.sublist(1).join(',') : '',
+    });
   }
 
   Future<bool> updateRoom(int id, Map<String, dynamic> data) async {

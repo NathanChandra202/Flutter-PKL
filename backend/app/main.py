@@ -1,7 +1,10 @@
 # pyrefly: ignore [missing-import]
+import os
 from fastapi import FastAPI
 # pyrefly: ignore [missing-import]
 from fastapi.middleware.cors import CORSMiddleware
+# pyrefly: ignore [missing-import]
+from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
 from app.api.endpoints import auth, verify, rooms, bookings, jastip, tools
 from app.models.base import Base
@@ -26,6 +29,11 @@ app.include_router(rooms.router, prefix=f"{settings.API_V1_STR}/rooms", tags=["r
 app.include_router(bookings.router, prefix=f"{settings.API_V1_STR}/bookings", tags=["bookings"])
 app.include_router(jastip.router, prefix=f"{settings.API_V1_STR}/jastip", tags=["jastip"])
 app.include_router(tools.router, prefix=f"{settings.API_V1_STR}/tools", tags=["tools"])
+
+os.makedirs("uploads/rooms", exist_ok=True)
+os.makedirs("uploads/ktp", exist_ok=True)
+os.makedirs("uploads/selfies", exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 
 @app.get("/")

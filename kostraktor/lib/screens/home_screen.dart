@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../utils/app_constants.dart';
 import '../utils/app_theme.dart';
 import '../providers/auth_provider.dart';
+import '../utils/format_utils.dart';
 import 'detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -36,8 +37,10 @@ class _HomeScreenState extends State<HomeScreen> {
           return {
             'id': r['id']?.toString() ?? '',
             'title': r['name'] ?? 'Kamar Kost',
-            'price': 'Rp ${r['price_per_month']?.toStringAsFixed(0) ?? 0}',
+            'priceRaw': r['price_per_month'] ?? 0,
+            'price': formatRupiah(r['price_per_month']),
             'image': r['image_url'] ?? 'https://tesmohamadasep.sirv.com/duaenam-grp-source/assets/kostraktor/kamar1.png',
+            'additional_images': r['additional_images'],
             'features': (r['facilities'] as String?)?.split(',').map((e) => e.trim()).toList() ?? [],
             'location': 'Pasar Rebo, Jakarta Timur',
             'type': r['room_type'] ?? 'Standard',

@@ -12,6 +12,7 @@ class KostRoom(Base):
     price_per_month = Column(Float)
     is_available = Column(Boolean, default=True)
     image_url = Column(String, nullable=True)
+    additional_images = Column(String, nullable=True)
     facilities = Column(String, nullable=True)
     room_type = Column(String, default="Campur")
     

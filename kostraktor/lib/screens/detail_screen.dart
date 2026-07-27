@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import '../utils/app_theme.dart';
 import '../providers/auth_provider.dart';
+import '../utils/format_utils.dart';
 import 'booking_form_screen.dart';
 import 'login_screen.dart';
 
@@ -53,10 +54,21 @@ class DetailScreen extends StatelessWidget {
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
 
     final title = unitData?['title'] ?? 'Tipe Premium'; 
-    final price = unitData?['price'] ?? 'Rp 1.800.000';
-    final imageUrl =
-        unitData?['image'] ??
-        'https://tesmohamadasep.sirv.com/duaenam-grp-source/assets/kostraktor/kamar1.png';
+    final rawPrice = unitData?['priceRaw'] ?? 1800000;
+    final price = formatRupiah(rawPrice);
+    
+    List<String> images = [];
+    if (unitData?['image'] != null && unitData!['image'].toString().isNotEmpty) {
+      images.add(unitData!['image']);
+    } else {
+      images.add('https://tesmohamadasep.sirv.com/duaenam-grp-source/assets/kostraktor/kamar1.png');
+    }
+
+    images.addAll(parseAdditionalImages(unitData?['additional_images']));
+
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final resolvedImages = images.map(auth.resolveMediaUrl).toList();
+
     final features =
         (unitData?['features'] as List<dynamic>?) ??
         ['Kamar Tidur', 'Kamar Mandi', 'WiFi', 'AC'];
@@ -101,12 +113,7 @@ class DetailScreen extends StatelessWidget {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.network(
-                    imageUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                        Container(color: Colors.grey.shade200),
-                  ),
+                  _RoomImageCarousel(images: resolvedImages),
                   // Bottom gradient so title is legible
                   Positioned(
                     bottom: 0,
@@ -248,11 +255,10 @@ class DetailScreen extends StatelessWidget {
                       Expanded(
                         child: _PriceBox(label: 'Sewa / Bulan', value: price),
                       ),
-                      const SizedBox(width: 12),
-                      const Expanded(
+                      Expanded(
                         child: _PriceBox(
                           label: 'Deposit Awal',
-                          value: 'Rp 1.000.000',
+                          value: formatRupiah(1000000),
                         ),
                       ),
                     ],
@@ -1111,6 +1117,63 @@ class DetailScreen extends StatelessWidget {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+class _RoomImageCarousel extends StatefulWidget {
+  final List<String> images;
+  const _RoomImageCarousel({required this.images});
+
+  @override
+  State<_RoomImageCarousel> createState() => _RoomImageCarouselState();
+}
+
+class _RoomImageCarouselState extends State<_RoomImageCarousel> {
+  int _currentIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        PageView.builder(
+          itemCount: widget.images.length,
+          onPageChanged: (index) => setState(() => _currentIndex = index),
+          itemBuilder: (context, index) {
+            return Image.network(
+              widget.images[index],
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) =>
+                  Container(color: Colors.grey.shade200),
+            );
+          },
+        ),
+        if (widget.images.length > 1)
+          Positioned(
+            bottom: 120,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                widget.images.length,
+                (index) => AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  width: _currentIndex == index ? 16 : 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: _currentIndex == index
+                        ? AppTheme.accentGold
+                        : Colors.white.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
 
 class _Divider extends StatelessWidget {
   const _Divider();

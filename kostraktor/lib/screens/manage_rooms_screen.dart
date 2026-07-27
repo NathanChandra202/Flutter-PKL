@@ -1,11 +1,34 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'dart:io';
 import '../providers/auth_provider.dart';
 import '../utils/app_theme.dart';
+import '../utils/format_utils.dart';
+
+// ── Top-level isolate function — harus di luar class agar bisa dipakai compute()
+/// Decode gambar apa pun (termasuk HDR/wide-gamut) lalu re-encode ke JPEG sRGB
+/// standar dengan lebar maksimal 1600 px. Berjalan di isolate terpisah sehingga
+/// UI thread tidak freeze saat memproses foto 4K.
+Uint8List? _decodeAndEncodeIsolate(Uint8List bytes) {
+  final decoded = img.decodeImage(bytes);
+  if (decoded == null) return null;
+  // Konversi ke sRGB eksplisit (hilangkan color profile non-standard)
+  final srgb = img.Image.from(decoded);
+  // Batasi lebar supaya ukuran upload tetap wajar
+  final resized = srgb.width > 1600
+      ? img.copyResize(srgb, width: 1600)
+      : srgb;
+  return Uint8List.fromList(img.encodeJpg(resized, quality: 85));
+}
+
+/// Wrapper async yang menjalankan decode+re-encode di isolate terpisah.
+Future<Uint8List?> _reencodeToJpeg(Uint8List originalBytes) {
+  return compute(_decodeAndEncodeIsolate, originalBytes);
+}
 
 /// Formatter pemisah ribuan Indonesia (titik) untuk input harga.
 /// Hanya menyimpan digit, lalu format ulang dengan NumberFormat.
@@ -60,12 +83,20 @@ class _ManageRoomsScreenState extends State<ManageRoomsScreen> {
     }
   }
 
+  List<String> _roomImageUrls(Map<String, dynamic> room, AuthProvider auth) {
+    final urls = <String>[];
+    final main = room['image_url']?.toString() ?? '';
+    if (main.isNotEmpty) urls.add(main);
+    urls.addAll(parseAdditionalImages(room['additional_images']));
+    return urls;
+  }
+
   void _showRoomForm({Map<String, dynamic>? room}) {
     final isEditing = room != null;
+    final auth = Provider.of<AuthProvider>(context, listen: false);
     final nameController = TextEditingController(text: room?['name']);
     final descController = TextEditingController(text: room?['description']);
 
-    // Format harga existing ke format ribuan saat edit
     final existingPrice = room?['price_per_month'];
     final initialPriceText = existingPrice != null
         ? NumberFormat('#,###', 'id_ID').format(existingPrice.toInt())
@@ -74,13 +105,17 @@ class _ManageRoomsScreenState extends State<ManageRoomsScreen> {
 
     final typeController = TextEditingController(text: room?['room_type'] ?? 'Standard');
     final facilitiesController = TextEditingController(text: room?['facilities']);
-    // imageController tetap dipakai untuk menyimpan URL hasil upload / URL existing
-    final imageController = TextEditingController(
-      text: room?['image_url'] ?? '',
-    );
+
+    List<String> serverImageUrls =
+        isEditing ? _roomImageUrls(room, auth) : <String>[];
+    // Bytes JPEG bersih hasil re-encode — bukan XFile path asli
+    List<Uint8List> pendingImages = [];
+    final picker = ImagePicker();
+
     bool isAvailable = room?['is_available'] ?? true;
-    XFile? pickedImage; // gambar yang dipilih dari galeri/kamera
-    bool isUploading = false;
+    bool isSubmitting = false;
+    final editingRoomId = isEditing ? room['id'] as int : null;
+
 
     showModalBottomSheet(
       context: context,
@@ -142,112 +177,135 @@ class _ManageRoomsScreenState extends State<ManageRoomsScreen> {
                       decoration: const InputDecoration(labelText: 'Kategori (Putra/Putri/Campur)', border: OutlineInputBorder()),
                     ),
                     const SizedBox(height: 12),
-                    // ── Poin 5: Image Picker + Preview ─────────────────────────
                     const Text(
                       'Gambar Kamar',
                       style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 8),
-                    // Preview area
-                    GestureDetector(
-                      onTap: () async {
-                        final picker = ImagePicker();
-                        final source = await showModalBottomSheet<ImageSource>(
-                          context: context,
-                          builder: (ctx) => SafeArea(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
+                    if (serverImageUrls.isNotEmpty || pendingImages.isNotEmpty)
+                      SizedBox(
+                        height: 120,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: serverImageUrls.length + pendingImages.length,
+                          separatorBuilder: (_, _) => const SizedBox(width: 8),
+                          itemBuilder: (context, idx) {
+                            final isServerImage = idx < serverImageUrls.length;
+                            final imageIndex = idx;
+                            return Stack(
                               children: [
-                                ListTile(
-                                  leading: const Icon(Icons.photo_library_outlined),
-                                  title: const Text('Pilih dari Galeri'),
-                                  onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: isServerImage
+                                      ? Image.network(
+                                          auth.resolveMediaUrl(serverImageUrls[idx]),
+                                          width: 120,
+                                          height: 120,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, _, _) => Container(
+                                            width: 120,
+                                            height: 120,
+                                            color: Colors.grey.shade200,
+                                            child: const Icon(Icons.broken_image, color: Colors.grey),
+                                          ),
+                                        )
+                                      : Image.memory(
+                                          pendingImages[idx - serverImageUrls.length],
+                                          width: 120,
+                                          height: 120,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, _, _) => Container(
+                                            width: 120,
+                                            height: 120,
+                                            color: Colors.grey.shade200,
+                                            child: const Icon(Icons.broken_image, color: Colors.grey),
+                                          ),
+                                        ),
                                 ),
-                                ListTile(
-                                  leading: const Icon(Icons.camera_alt_outlined),
-                                  title: const Text('Ambil Foto'),
-                                  onTap: () => Navigator.pop(ctx, ImageSource.camera),
+                                Positioned(
+                                  top: 4,
+                                  right: 4,
+                                  child: GestureDetector(
+                                    onTap: () async {
+                                      if (isServerImage) {
+                                        final url = serverImageUrls[imageIndex];
+                                        if (editingRoomId != null &&
+                                            url.startsWith('/uploads/')) {
+                                          await auth.deleteRoomImage(editingRoomId, url);
+                                        }
+                                        setModalState(() {
+                                          serverImageUrls.removeAt(imageIndex);
+                                        });
+                                      } else {
+                                        setModalState(() {
+                                          pendingImages.removeAt(
+                                            imageIndex - serverImageUrls.length,
+                                          );
+                                        });
+                                      }
+                                    },
+                                    child: Container(
+                                      decoration: const BoxDecoration(
+                                        color: Colors.red,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      padding: const EdgeInsets.all(4),
+                                      child: const Icon(Icons.close, size: 16, color: Colors.white),
+                                    ),
+                                  ),
                                 ),
+                                if (idx == 0)
+                                  Positioned(
+                                    bottom: 4,
+                                    left: 4,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black54,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Text('Utama', style: TextStyle(color: Colors.white, fontSize: 10)),
+                                    ),
+                                  ),
                               ],
-                            ),
-                          ),
-                        );
-                        if (source == null) return;
-                        final picked = await picker.pickImage(
-                          source: source,
-                          imageQuality: 80,
-                        );
-                        if (picked != null) {
-                          setModalState(() {
-                            pickedImage = picked;
-                            isUploading = true;
-                          });
-                          // TODO: Upload gambar ke backend.
-                          // Endpoint upload gambar untuk rooms BELUM TERSEDIA di backend.
-                          // Perlu endpoint POST /rooms/upload-image atau sejenisnya.
-                          // Setelah endpoint tersedia, lakukan:
-                          //   final url = await auth.uploadRoomImage(picked);
-                          //   imageController.text = url;
-                          // Untuk sementara, placeholder URL kosong:
-                          imageController.text = ''; // akan diisi setelah upload
-                          setModalState(() => isUploading = false);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Gambar dipilih. Upload endpoint belum tersedia — hubungi backend developer.',
-                                ),
-                                backgroundColor: Colors.orange,
-                                duration: Duration(seconds: 4),
-                              ),
                             );
-                          }
-                        }
-                      },
-                      child: Container(
-                        height: 140,
+                          },
+                        ),
+                      )
+                    else
+                      Container(
+                        height: 120,
                         decoration: BoxDecoration(
                           color: Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid),
+                          border: Border.all(color: Colors.grey.shade300),
                         ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: pickedImage != null
-                              ? Stack(
-                                  fit: StackFit.expand,
-                                  children: [
-                                    Image.file(File(pickedImage!.path), fit: BoxFit.cover),
-                                    if (isUploading)
-                                      const ColoredBox(
-                                        color: Color(0x88000000),
-                                        child: Center(
-                                          child: CircularProgressIndicator(color: Colors.white),
-                                        ),
-                                      ),
-                                  ],
-                                )
-                              : imageController.text.isNotEmpty
-                                  ? Image.network(
-                                      imageController.text,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => _imagePlaceholder(),
-                                    )
-                                  : _imagePlaceholder(),
-                        ),
+                        child: const Center(child: Text('Belum ada gambar')),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    // Fallback: juga bisa ketik URL manual
-                    TextField(
-                      controller: imageController,
-                      onChanged: (_) => setModalState(() {}),
-                      decoration: const InputDecoration(
-                        labelText: 'Atau ketik URL gambar manual',
-                        hintText: 'https://...',
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                      ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        final picked = await picker.pickMultiImage(imageQuality: 85);
+                        if (picked.isEmpty) return;
+
+                        // Tampilkan loading singkat selama re-encode berjalan
+                        setModalState(() => isSubmitting = true);
+
+                        final reencoded = <Uint8List>[];
+                        for (final file in picked) {
+                          final raw = await file.readAsBytes();
+                          // Re-encode di isolate terpisah — bypass native ImageDecoder
+                          final jpeg = await _reencodeToJpeg(raw);
+                          if (jpeg != null) reencoded.add(jpeg);
+                        }
+
+                        setModalState(() {
+                          isSubmitting = false;
+                          pendingImages.addAll(reencoded);
+                        });
+                      },
+                      icon: const Icon(Icons.photo_library_outlined),
+                      label: const Text('Pilih dari Galeri (bisa banyak)'),
                     ),
                     const SizedBox(height: 12),
                     SwitchListTile(
@@ -264,9 +322,11 @@ class _ManageRoomsScreenState extends State<ManageRoomsScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      onPressed: () async {
+                      onPressed: isSubmitting
+                          ? null
+                          : () async {
+                        setModalState(() => isSubmitting = true);
                         final auth = Provider.of<AuthProvider>(context, listen: false);
-                        // Strip titik ribuan sebelum parse ke double
                         final rawPrice = priceController.text.replaceAll('.', '');
                         final data = {
                           'name': nameController.text,
@@ -274,15 +334,51 @@ class _ManageRoomsScreenState extends State<ManageRoomsScreen> {
                           'price_per_month': double.tryParse(rawPrice) ?? 0.0,
                           'facilities': facilitiesController.text,
                           'room_type': typeController.text,
-                          'image_url': imageController.text,
+                          'image_url': serverImageUrls.isNotEmpty ? serverImageUrls.first : '',
+                          'additional_images': serverImageUrls.length > 1
+                              ? serverImageUrls.sublist(1).join(',')
+                              : '',
                           'is_available': isAvailable,
                         };
 
-                        bool success;
+                        bool success = false;
+                        int? roomId;
+
                         if (isEditing) {
-                          success = await auth.updateRoom(room['id'], data);
+                          roomId = editingRoomId;
+                          success = await auth.updateRoom(roomId!, data);
                         } else {
-                          success = await auth.createRoom(data);
+                          final created = await auth.createRoom(data);
+                          if (created != null) {
+                            roomId = created['id'] as int?;
+                            success = roomId != null;
+                          }
+                        }
+
+                        if (success && roomId != null && pendingImages.isNotEmpty) {
+                          // pendingImages sudah berupa Uint8List JPEG bersih — langsung upload
+                          final names = List.generate(
+                            pendingImages.length,
+                            (i) => 'room_${roomId}_$i.jpg',
+                          );
+
+                          final uploaded = await auth.uploadRoomImages(
+                            roomId,
+                            pendingImages,
+                            filenames: names,
+                          );
+
+                          if (uploaded != null) {
+                            final mainUrl = serverImageUrls.isNotEmpty
+                                ? serverImageUrls.first
+                                : '';
+                            final finalUrls = mainUrl.isNotEmpty
+                                ? [mainUrl, ...uploaded]
+                                : uploaded;
+                            success = await auth.syncRoomImageFields(roomId, finalUrls);
+                          } else {
+                            success = false;
+                          }
                         }
 
                         if (context.mounted) {
@@ -299,7 +395,13 @@ class _ManageRoomsScreenState extends State<ManageRoomsScreen> {
                           }
                         }
                       },
-                      child: Text(isEditing ? 'Simpan Perubahan' : 'Tambah Kamar', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      child: isSubmitting
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : Text(isEditing ? 'Simpan Perubahan' : 'Tambah Kamar', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     ),
                     const SizedBox(height: 24),
                   ],
@@ -309,20 +411,6 @@ class _ManageRoomsScreenState extends State<ManageRoomsScreen> {
           },
         );
       },
-    );
-  }
-
-  Widget _imagePlaceholder() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(Icons.add_photo_alternate_outlined, size: 36, color: Colors.grey.shade400),
-        const SizedBox(height: 8),
-        Text(
-          'Ketuk untuk pilih gambar',
-          style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
-        ),
-      ],
     );
   }
 
@@ -356,6 +444,7 @@ class _ManageRoomsScreenState extends State<ManageRoomsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
     return Scaffold(
       backgroundColor: AppTheme.bgWhite,
       appBar: AppBar(
@@ -377,7 +466,7 @@ class _ManageRoomsScreenState extends State<ManageRoomsScreen> {
               child: ListView.separated(
                 padding: const EdgeInsets.all(16),
                 itemCount: _rooms.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                separatorBuilder: (_, _) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   final room = _rooms[index];
                   final isAvailable = room['is_available'] ?? true;
@@ -396,9 +485,9 @@ class _ManageRoomsScreenState extends State<ManageRoomsScreen> {
                         ClipRRect(
                           borderRadius: BorderRadius.circular(8),
                           child: Image.network(
-                            room['image_url'] ?? '',
+                            auth.resolveMediaUrl(room['image_url'] ?? ''),
                             width: 70, height: 70, fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(width: 70, height: 70, color: Colors.grey.shade200, child: const Icon(Icons.meeting_room, color: Colors.grey)),
+                            errorBuilder: (_, _, _) => Container(width: 70, height: 70, color: Colors.grey.shade200, child: const Icon(Icons.meeting_room, color: Colors.grey)),
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -408,7 +497,7 @@ class _ManageRoomsScreenState extends State<ManageRoomsScreen> {
                             children: [
                               Text(room['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                               const SizedBox(height: 4),
-                              Text('Rp ${room['price_per_month']}', style: const TextStyle(color: AppTheme.primaryBlack, fontWeight: FontWeight.w600)),
+                              Text(formatRupiah(room['price_per_month']), style: const TextStyle(color: AppTheme.primaryBlack, fontWeight: FontWeight.w600)),
                               const SizedBox(height: 4),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
