@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:percent_indicator/percent_indicator.dart';
 import '../utils/app_theme.dart';
 
 /// Result returned when selfie check completes
@@ -43,11 +45,70 @@ class _LivenessScreenState extends State<LivenessScreen> {
   /// selfie step. Distinct from any processing flag on the selfie side.
   bool _isPreparingFaceCapture = false;
 
+  // ─── Prep-progress state (KTP → face photo transition) ────────────────────
+  /// Total duration of the countdown shown to the user before auto-advancing
+  /// to the selfie step (starts after watermark processing finishes).
+  static const Duration _faceCapturePrepDuration = Duration(seconds: 2);
+
+  /// Progress value 0.0 → 1.0 driving the CircularPercentIndicator.
+  double _prepProgress = 0.0;
+
+  /// Periodic timer that increments [_prepProgress] every tick.
+  Timer? _prepTimer;
+  // ──────────────────────────────────────────────────────────────────────────
+
   @override
   void initState() {
     super.initState();
     _ktpBytes = widget.ktpBytes;
     if (_ktpBytes != null) _step = 1;
+  }
+
+  @override
+  void dispose() {
+    _prepTimer?.cancel();
+    _prepTimer = null;
+    super.dispose();
+  }
+
+  /// Starts the periodic timer that drives the prep-progress indicator.
+  /// Automatically advances to step 1 (selfie) when progress reaches 1.0.
+  void _startPrepTimer() {
+    _prepTimer?.cancel();
+    if (!mounted) return;
+    setState(() => _prepProgress = 0.0);
+
+    const tickInterval = Duration(milliseconds: 50);
+    final totalTicks =
+        _faceCapturePrepDuration.inMilliseconds / tickInterval.inMilliseconds;
+    int currentTick = 0;
+
+    _prepTimer = Timer.periodic(tickInterval, (timer) {
+      currentTick++;
+      if (mounted) {
+        setState(
+          () => _prepProgress = (currentTick / totalTicks).clamp(0.0, 1.0),
+        );
+      }
+      if (currentTick >= totalTicks) {
+        timer.cancel();
+        _prepTimer = null;
+        if (mounted) {
+          setState(() {
+            _isPreparingFaceCapture = false;
+            _prepProgress = 0.0;
+            _step = 1;
+          });
+        }
+      }
+    });
+  }
+
+  /// Cancels the prep timer and resets progress.
+  void _stopPrepTimer() {
+    _prepTimer?.cancel();
+    _prepTimer = null;
+    if (mounted) setState(() => _prepProgress = 0.0);
   }
 
   Future<void> _pickKtp({bool gallery = false}) async {
@@ -59,17 +120,22 @@ class _LivenessScreenState extends State<LivenessScreen> {
     if (picked == null) return;
 
     // Show loading overlay while watermark is being applied
-    setState(() => _isPreparingFaceCapture = true);
+    setState(() {
+      _isPreparingFaceCapture = true;
+      _prepProgress = 0.0;
+    });
 
     final rawBytes = await picked.readAsBytes();
     final watermarked = await _applyKtpWatermark(rawBytes);
 
+    if (!mounted) return;
     setState(() {
       _ktpBytesRaw = rawBytes;   // preserve original for backend
       _ktpBytes = watermarked;   // watermarked for display
-      _isPreparingFaceCapture = false;
-      _step = 1;
+      // keep _isPreparingFaceCapture = true; progress timer takes over now
     });
+    // Watermark done → start countdown timer to auto-advance to selfie
+    _startPrepTimer();
   }
 
   Future<void> _pickSelfie({bool gallery = false}) async {
@@ -261,37 +327,75 @@ class _LivenessScreenState extends State<LivenessScreen> {
                     if (_isPreparingFaceCapture)
                       Container(
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.55),
+                          color: AppTheme.primaryBlack.withValues(alpha: 0.82),
                           borderRadius: BorderRadius.circular(15),
                         ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const SizedBox(
-                              width: 36,
-                              height: 36,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 3,
-                              ),
+                            CircularPercentIndicator(
+                              radius: 38,
+                              lineWidth: 5,
+                              percent: _prepProgress,
+                              progressColor: AppTheme.accentGold,
+                              backgroundColor: AppTheme.accentGoldLight
+                                  .withValues(alpha: 0.25),
+                              circularStrokeCap: CircularStrokeCap.round,
+                              animation: false,
+                              center: _prepProgress > 0.0
+                                  ? Text(
+                                      '${(_prepProgress * 100).toInt()}%',
+                                      style: const TextStyle(
+                                        color: AppTheme.accentGold,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    )
+                                  : const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2.5,
+                                      ),
+                                    ),
                             ),
                             const SizedBox(height: 14),
-                            const Text(
-                              'Memproses foto KTP...',
-                              style: TextStyle(
+                            Text(
+                              _prepProgress > 0.0
+                                  ? 'Bersiap mengambil foto wajah...'
+                                  : 'Memproses foto KTP...',
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Bersiap mengambil foto wajah',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.75),
-                                fontSize: 11,
+                            if (_prepProgress > 0.0) ...[  
+                              const SizedBox(height: 4),
+                              TextButton(
+                                onPressed: () {
+                                  _stopPrepTimer();
+                                  setState(() {
+                                    _isPreparingFaceCapture = false;
+                                    _step = 1;
+                                  });
+                                },
+                                style: TextButton.styleFrom(
+                                  padding: EdgeInsets.zero,
+                                  minimumSize: Size.zero,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: Text(
+                                  'Lewati',
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.65),
+                                    fontSize: 11,
+                                  ),
+                                ),
                               ),
-                            ),
+                            ],
                           ],
                         ),
                       ),

@@ -9,12 +9,30 @@ import '../providers/auth_provider.dart';
 import '../utils/format_utils.dart';
 import 'booking_form_screen.dart';
 import 'login_screen.dart';
+import 'photo_viewer_screen.dart';
 
-class DetailScreen extends StatelessWidget {
+class DetailScreen extends StatefulWidget {
   final Map<String, dynamic>? unitData;
   const DetailScreen({super.key, this.unitData});
 
+  @override
+  State<DetailScreen> createState() => _DetailScreenState();
+}
+
+class _DetailScreenState extends State<DetailScreen> {
+
   // Fungsi untuk membuka WhatsApp
+  @override
+  void initState() {
+    super.initState();
+    // Fetch real reviews from backend when screen opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<AuthProvider>().fetchReviews();
+      }
+    });
+  }
+
   Future<void> _openWhatsApp(BuildContext context) async {
     const phoneNumber = '6281234567890'; // Ganti dengan nomor admin
     const message =
@@ -53,24 +71,26 @@ class DetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
 
-    final title = unitData?['title'] ?? 'Tipe Premium'; 
-    final rawPrice = unitData?['priceRaw'] ?? 1800000;
+    final title = widget.unitData?['title'] ?? 'Tipe Premium';
+    final rawPrice = widget.unitData?['priceRaw'] ?? 1800000;
     final price = formatRupiah(rawPrice);
-    
+
     List<String> images = [];
-    if (unitData?['image'] != null && unitData!['image'].toString().isNotEmpty) {
-      images.add(unitData!['image']);
+    if (widget.unitData?['image'] != null &&
+        widget.unitData!['image'].toString().isNotEmpty) {
+      images.add(widget.unitData!['image']);
     } else {
-      images.add('https://tesmohamadasep.sirv.com/duaenam-grp-source/assets/kostraktor/kamar1.png');
+      images.add(
+          'https://tesmohamadasep.sirv.com/duaenam-grp-source/assets/kostraktor/kamar1.png');
     }
 
-    images.addAll(parseAdditionalImages(unitData?['additional_images']));
+    images.addAll(parseAdditionalImages(widget.unitData?['additional_images']));
 
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final resolvedImages = images.map(auth.resolveMediaUrl).toList();
 
     final features =
-        (unitData?['features'] as List<dynamic>?) ??
+        (widget.unitData?['features'] as List<dynamic>?) ??
         ['Kamar Tidur', 'Kamar Mandi', 'WiFi', 'AC'];
 
     return Scaffold(
@@ -557,7 +577,7 @@ class DetailScreen extends StatelessWidget {
                           ctx,
                           MaterialPageRoute(
                             builder: (_) =>
-                                BookingFormScreen(unitData: unitData),
+                                BookingFormScreen(unitData: widget.unitData),
                           ),
                         );
                       }
@@ -784,7 +804,7 @@ class DetailScreen extends StatelessWidget {
                             ),
                             elevation: 0,
                           ),
-                          onPressed: () {
+                          onPressed: () async {
                             if (rating == 0) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
@@ -811,14 +831,17 @@ class DetailScreen extends StatelessWidget {
                               context,
                               listen: false,
                             );
-                            final error = auth.submitReview(
+
+                            // Close dialog first, then await network call
+                            commentController.dispose();
+                            Navigator.pop(context);
+
+                            final error = await auth.submitReview(
                               rating: rating,
                               comment: comment,
                             );
 
-                            commentController.dispose();
-                            Navigator.pop(context);
-
+                            if (!context.mounted) return;
                             if (error != null) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
@@ -1128,6 +1151,31 @@ class _RoomImageCarousel extends StatefulWidget {
 
 class _RoomImageCarouselState extends State<_RoomImageCarousel> {
   int _currentIndex = 0;
+  late final PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _openViewer(BuildContext context, int index) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PhotoViewerScreen(
+          imageUrls: widget.images,
+          initialIndex: index,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1135,14 +1183,40 @@ class _RoomImageCarouselState extends State<_RoomImageCarousel> {
       fit: StackFit.expand,
       children: [
         PageView.builder(
+          controller: _pageController,
           itemCount: widget.images.length,
           onPageChanged: (index) => setState(() => _currentIndex = index),
           itemBuilder: (context, index) {
-            return Image.network(
-              widget.images[index],
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
-                  Container(color: Colors.grey.shade200),
+            return GestureDetector(
+              onTap: () => _openViewer(context, index),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.network(
+                    widget.images[index],
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        Container(color: Colors.grey.shade200),
+                  ),
+                  // Subtle hint icon so users know the image is tappable
+                  Positioned(
+                    top: 12,
+                    right: 12,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.4),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.zoom_out_map_rounded,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             );
           },
         ),

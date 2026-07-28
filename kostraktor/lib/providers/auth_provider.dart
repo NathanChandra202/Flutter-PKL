@@ -138,11 +138,11 @@ class AuthProvider extends ChangeNotifier {
   );
 
   static const String _devDefaultBaseUrl =
-      'http://dev-api.kostraktor.duaenam.id/api/v1';
+      'https://dev-api-kostraktor.duaenam.id/api/v1';
 
   // Sementara sama dengan dev; ganti saat URL prod terpisah tersedia.
   static const String _prodDefaultBaseUrl =
-      'http://dev-api.kostraktor.duaenam.id/api/v1';
+      'https://dev-api-kostraktor.duaenam.id/api/v1';
 
   static String get _baseUrl {
     if (_apiBaseUrlOverride.isNotEmpty) return _apiBaseUrlOverride;
@@ -168,98 +168,8 @@ class AuthProvider extends ChangeNotifier {
   // Queue of users pending admin approval
   final List<PendingUser> _pendingApprovals = [];
 
-  // Reviews storage (in-memory, real data from user submissions)
-  final List<Review> _reviews = [
-    // Dummy reviews untuk demonstrasi badge
-    Review(
-      userName: 'Ahmad Rizki',
-      userEmail: 'ahmad@example.com',
-      rating: 5.0,
-      comment: 'Kost terbaik! Bersih, nyaman, dan pelayanan ramah.',
-      createdAt: DateTime.now().subtract(const Duration(days: 2)),
-      roomType: 'Tipe Premium',
-    ),
-    Review(
-      userName: 'Siti Nurhaliza',
-      userEmail: 'siti@example.com',
-      rating: 5.0,
-      comment: 'Fasilitasnya lengkap, WiFi cepat, kamar mandi bersih.',
-      createdAt: DateTime.now().subtract(const Duration(days: 5)),
-      roomType: 'Tipe Deluxe',
-    ),
-    Review(
-      userName: 'Budi Santoso',
-      userEmail: 'budi@example.com',
-      rating: 4.5,
-      comment: 'Lokasi strategis dekat dengan stasiun. Recommended!',
-      createdAt: DateTime.now().subtract(const Duration(days: 7)),
-      roomType: 'Tipe Standard',
-    ),
-    Review(
-      userName: 'Diana Putri',
-      userEmail: 'diana@example.com',
-      rating: 5.0,
-      comment: 'Penjaga kost ramah, tempatnya aman dan nyaman.',
-      createdAt: DateTime.now().subtract(const Duration(days: 10)),
-      roomType: 'Tipe Premium',
-    ),
-    Review(
-      userName: 'Eko Prasetyo',
-      userEmail: 'eko@example.com',
-      rating: 4.5,
-      comment: 'Suasananya tenang, cocok untuk WFH.',
-      createdAt: DateTime.now().subtract(const Duration(days: 12)),
-      roomType: 'Tipe Deluxe',
-    ),
-    Review(
-      userName: 'Fitri Handayani',
-      userEmail: 'fitri@example.com',
-      rating: 5.0,
-      comment: 'AC dingin, kasur empuk, parkir luas. Top!',
-      createdAt: DateTime.now().subtract(const Duration(days: 15)),
-      roomType: 'Tipe Premium',
-    ),
-    Review(
-      userName: 'Gani Kusuma',
-      userEmail: 'gani@example.com',
-      rating: 4.0,
-      comment: 'Harga sesuai dengan fasilitas yang diberikan.',
-      createdAt: DateTime.now().subtract(const Duration(days: 18)),
-      roomType: 'Tipe Standard',
-    ),
-    Review(
-      userName: 'Hani Maulida',
-      userEmail: 'hani@example.com',
-      rating: 5.0,
-      comment: 'Kamar luas, ventilasi bagus, keamanan 24 jam.',
-      createdAt: DateTime.now().subtract(const Duration(days: 20)),
-      roomType: 'Tipe Deluxe',
-    ),
-    Review(
-      userName: 'Indra Gunawan',
-      userEmail: 'indra@example.com',
-      rating: 4.5,
-      comment: 'Pelayanan cepat, maintenance rutin, sangat puas.',
-      createdAt: DateTime.now().subtract(const Duration(days: 22)),
-      roomType: 'Tipe Premium',
-    ),
-    Review(
-      userName: 'Julia Rahmawati',
-      userEmail: 'julia@example.com',
-      rating: 5.0,
-      comment: 'Lingkungan bersih, tetangga friendly, suka banget!',
-      createdAt: DateTime.now().subtract(const Duration(days: 25)),
-      roomType: 'Tipe Premium',
-    ),
-    Review(
-      userName: 'Kevin Aditya',
-      userEmail: 'kevin@example.com',
-      rating: 4.5,
-      comment: 'Dekat dengan fasilitas umum, akses mudah ke mana-mana.',
-      createdAt: DateTime.now().subtract(const Duration(days: 28)),
-      roomType: 'Tipe Deluxe',
-    ),
-  ];
+  // Reviews storage — populated from backend via fetchReviews()
+  final List<Review> _reviews = [];
 
   // ─── Getters ──────────────────────────────────────────────────────────────
 
@@ -347,7 +257,9 @@ class AuthProvider extends ChangeNotifier {
           }
 
           // --- RESTORE BOOKING DATA ---
-          final pending = _pendingApprovals.where((p) => p.email == _userEmail).firstOrNull;
+          final pending = _pendingApprovals
+              .where((p) => p.email == _userEmail)
+              .firstOrNull;
           if (pending != null) {
             _bookingData = pending.bookingData;
             _currentRole = UserRole.pendingResident;
@@ -365,14 +277,49 @@ class AuthProvider extends ChangeNotifier {
         return data['detail'] ?? 'Kredensial salah atau pengguna tidak aktif';
       }
     } catch (e) {
-      return 'Gagal terhubung ke server. Pastikan URL server benar dan server menyala.';
+      // If backend connection fails, try local login as fallback
+      debugPrint('Backend login failed: $e');
+
+      // Try local login
+      final user = _registeredUsers[trimmedEmail];
+      if (user == null) {
+        return 'Server tidak dapat dijangkau. Email tidak terdaftar dalam cache lokal.';
+      }
+      if (user['password'] != password) {
+        return 'Server tidak dapat dijangkau. Password salah untuk cache lokal.';
+      }
+
+      // Local login success
+      _userEmail = trimmedEmail;
+      _userName = user['name'];
+      _userPhone = user['phone'];
+      _currentRole = _parseRole(user['role'] ?? 'calon');
+
+      // Restore assigned room for residents
+      if (_currentRole == UserRole.resident && user['room'] != null) {
+        _assignedRoom = user['room'];
+      }
+
+      // Restore booking data if pending
+      if (_currentRole == UserRole.pendingResident) {
+        final pending = _pendingApprovals
+            .where((p) => p.email == trimmedEmail)
+            .firstOrNull;
+        if (pending != null) {
+          _bookingData = pending.bookingData;
+        }
+      }
+
+      notifyListeners();
+      return null; // success with local fallback
     }
   }
 
-   Future<String?> signInWithGoogle() async {
+  Future<String?> signInWithGoogle() async {
     try {
       final googleSignIn = GoogleSignIn(
-        serverClientId: '926017391118-jiamtuuvigpkcat4gj83bv1pqqq21e6d.apps.googleusercontent.com',
+        serverClientId:
+            '926017391118-jiamtuuvigpkcat4gj83bv1pqqq21e6d.apps.googleusercontent.com',
       );
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
 
@@ -380,8 +327,9 @@ class AuthProvider extends ChangeNotifier {
         return 'Pilih akun dibatalkan';
       }
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
       final String? idToken = googleAuth.idToken;
 
       if (idToken == null) {
@@ -427,7 +375,9 @@ class AuthProvider extends ChangeNotifier {
           }
 
           // --- RESTORE BOOKING DATA ---
-          final pending = _pendingApprovals.where((p) => p.email == _userEmail).firstOrNull;
+          final pending = _pendingApprovals
+              .where((p) => p.email == _userEmail)
+              .firstOrNull;
           if (pending != null) {
             _bookingData = pending.bookingData;
             _currentRole = UserRole.pendingResident;
@@ -491,7 +441,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> submitBooking(BookingData data) async {
     _bookingData = data;
     _currentRole = UserRole.pendingResident;
-    
+
     if (_userEmail != null && _registeredUsers.containsKey(_userEmail)) {
       _registeredUsers[_userEmail!]!['role'] = 'pendingResident';
     }
@@ -702,9 +652,9 @@ class AuthProvider extends ChangeNotifier {
 
   Future<bool> deleteRoomImage(int roomId, String imageUrl) async {
     try {
-      final uri = Uri.parse('$_baseUrl/rooms/$roomId/images').replace(
-        queryParameters: {'image_url': imageUrl},
-      );
+      final uri = Uri.parse(
+        '$_baseUrl/rooms/$roomId/images',
+      ).replace(queryParameters: {'image_url': imageUrl});
       final response = await http.delete(uri);
       return response.statusCode == 200;
     } catch (e) {
@@ -720,8 +670,9 @@ class AuthProvider extends ChangeNotifier {
 
     return updateRoom(roomId, {
       'image_url': allUrls.first,
-      'additional_images':
-          allUrls.length > 1 ? allUrls.sublist(1).join(',') : '',
+      'additional_images': allUrls.length > 1
+          ? allUrls.sublist(1).join(',')
+          : '',
     });
   }
 
@@ -958,8 +909,36 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Submit a review (for residents and pending residents who have confirmed payment)
-  String? submitReview({required double rating, required String comment}) {
+  /// Fetch reviews from backend. Call on screen open so data is always fresh.
+  Future<void> fetchReviews() async {
+    try {
+      final response = await http.get(Uri.parse('$_baseUrl/reviews/'));
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        _reviews
+          ..clear()
+          ..addAll(data.map((r) => Review(
+                userName: r['user_name'] ?? 'Anonymous',
+                userEmail: r['user_email'] ?? '',
+                rating: (r['rating'] as num).toDouble(),
+                comment: r['comment'] ?? '',
+                createdAt: DateTime.parse(r['created_at']),
+                roomType: r['room_type'],
+              )));
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error fetching reviews: $e');
+    }
+  }
+
+  /// Submit a review to the backend (for residents and pending residents
+  /// who have confirmed payment). Returns null on success, error string on failure.
+  Future<String?> submitReview({
+    required double rating,
+    required String comment,
+  }) async {
+    // ── Client-side validations (kept identical to previous logic) ──────────
     if (!isResident &&
         !(isPendingResident && _bookingData?.waConfirmed == true)) {
       return 'Hanya penghuni atau calon penghuni yang sudah konfirmasi pembayaran yang bisa memberikan review.';
@@ -971,26 +950,44 @@ class AuthProvider extends ChangeNotifier {
       return 'Rating harus antara 1-5 bintang.';
     }
 
-    // Check if user already reviewed
-    final existingReview = _reviews
-        .where((r) => r.userEmail == _userEmail)
-        .firstOrNull;
-    if (existingReview != null) {
+    // Optimistic duplicate check using cached data (backend enforces it too)
+    final alreadyReviewed =
+        _reviews.any((r) => r.userEmail == _userEmail);
+    if (alreadyReviewed) {
       return 'Anda sudah memberikan review sebelumnya.';
     }
 
-    final review = Review(
-      userName: _userName ?? 'Anonymous',
-      userEmail: _userEmail!,
-      rating: rating,
-      comment: comment.trim(),
-      createdAt: DateTime.now(),
-      roomType: _bookingData?.roomType,
-    );
+    if (_accessToken == null) {
+      return 'Anda harus login terlebih dahulu.';
+    }
 
-    _reviews.insert(0, review); // Add to beginning (newest first)
-    notifyListeners();
-    return null; // Success
+    // ── Send to backend ───────────────────────────────────────────────────
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/reviews/'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_accessToken',
+        },
+        body: json.encode({
+          'rating': rating,
+          'comment': comment.trim(),
+          'room_type': _bookingData?.roomType,
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Refresh list from backend so everyone sees the same data
+        await fetchReviews();
+        return null; // success
+      } else {
+        final data = json.decode(response.body);
+        return data['detail'] ?? 'Gagal mengirim review. Coba lagi.';
+      }
+    } catch (e) {
+      debugPrint('Error submitting review: $e');
+      return 'Gagal terhubung ke server. Periksa koneksi internet Anda.';
+    }
   }
 
   /// Verifies face match between KTP and Selfie using FastAPI backend

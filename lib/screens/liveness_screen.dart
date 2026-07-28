@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:math';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:percent_indicator/percent_indicator.dart';
 import 'package:provider/provider.dart';
 import '../utils/app_theme.dart';
 import '../providers/auth_provider.dart';
@@ -40,6 +42,17 @@ class _LivenessScreenState extends State<LivenessScreen>
   late final AnimationController _pulseCtrl;
   late final Animation<double> _pulseAnim;
 
+  // ─── Prep-progress state (KTP → face photo transition) ────────────────────
+  /// Total duration of the auto-advance pause shown to the user before selfie.
+  static const Duration _faceCapturePrepDuration = Duration(seconds: 3);
+
+  /// Progress value 0.0 → 1.0 driving the CircularPercentIndicator.
+  double _prepProgress = 0.0;
+
+  /// Periodic timer that increments [_prepProgress] every tick.
+  Timer? _prepTimer;
+  // ──────────────────────────────────────────────────────────────────────────
+
   static const _challenges = [
     'Lihat ke kamera dan SENYUM',
     'Lihat ke kamera dan BERKEDIP 2x',
@@ -66,8 +79,50 @@ class _LivenessScreenState extends State<LivenessScreen>
 
   @override
   void dispose() {
+    _prepTimer?.cancel();
+    _prepTimer = null;
     _pulseCtrl.dispose();
     super.dispose();
+  }
+
+  /// Starts the periodic timer that drives the prep-progress indicator.
+  /// Automatically advances to step 2 (selfie) when progress reaches 1.0.
+  void _startPrepTimer() {
+    _prepTimer?.cancel();
+    if (!mounted) return;
+    setState(() => _prepProgress = 0.0);
+
+    const tickInterval = Duration(milliseconds: 50);
+    final totalTicks =
+        _faceCapturePrepDuration.inMilliseconds / tickInterval.inMilliseconds;
+    int currentTick = 0;
+
+    _prepTimer = Timer.periodic(tickInterval, (timer) {
+      currentTick++;
+      if (mounted) {
+        setState(
+          () => _prepProgress = (currentTick / totalTicks).clamp(0.0, 1.0),
+        );
+      }
+      if (currentTick >= totalTicks) {
+        timer.cancel();
+        _prepTimer = null;
+        if (mounted) {
+          setState(() {
+            _prepProgress = 0.0;
+            _step = 2;
+          });
+        }
+      }
+    });
+  }
+
+  /// Cancels the prep timer and resets progress (e.g. when user taps button
+  /// manually or navigates away before the countdown finishes).
+  void _stopPrepTimer() {
+    _prepTimer?.cancel();
+    _prepTimer = null;
+    if (mounted) setState(() => _prepProgress = 0.0);
   }
 
   Future<void> _pickKtp({bool gallery = false}) async {
@@ -83,6 +138,8 @@ class _LivenessScreenState extends State<LivenessScreen>
       _ktpBytes = watermarked;
       _step = 1;
     });
+    // Start countdown: KTP done → auto-advance to selfie with progress indicator
+    _startPrepTimer();
   }
 
   /// Stamps "KOSTRAKTOR - UNTUK VERIFIKASI SAJA" + timestamp watermark on the KTP image.
@@ -669,8 +726,71 @@ class _LivenessScreenState extends State<LivenessScreen>
               'Mulai Selfie Sekarang',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
             ),
-            onPressed: () => setState(() => _step = 2),
+            onPressed: () {
+              // User tapped manually → cancel auto-advance timer and go directly
+              _stopPrepTimer();
+              setState(() => _step = 2);
+            },
           ),
+
+          // ── Prep-progress overlay ────────────────────────────────────────
+          if (_prepProgress > 0.0 && _prepProgress < 1.0) ...[  
+            const SizedBox(height: 20),
+            Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryBlack.withValues(alpha: 0.88),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.25),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularPercentIndicator(
+                      radius: 44,
+                      lineWidth: 6,
+                      percent: _prepProgress,
+                      progressColor: AppTheme.accentGold,
+                      backgroundColor: AppTheme.accentGoldLight.withValues(
+                        alpha: 0.25,
+                      ),
+                      circularStrokeCap: CircularStrokeCap.round,
+                      animation: false,
+                      center: Text(
+                        '${(_prepProgress * 100).toInt()}%',
+                        style: const TextStyle(
+                          color: AppTheme.accentGold,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Bersiap mengambil foto wajah...',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          // ── End prep-progress overlay ──────────────────────────────────
         ],
       ),
     );

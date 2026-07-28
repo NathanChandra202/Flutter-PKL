@@ -39,7 +39,9 @@ class _HomeScreenState extends State<HomeScreen> {
             'title': r['name'] ?? 'Kamar Kost',
             'priceRaw': r['price_per_month'] ?? 0,
             'price': formatRupiah(r['price_per_month']),
-            'image': r['image_url'] ?? 'https://tesmohamadasep.sirv.com/duaenam-grp-source/assets/kostraktor/kamar1.png',
+            'image': (r['image_url'] != null && r['image_url'].toString().trim().isNotEmpty)
+                ? auth.resolveMediaUrl(r['image_url'])
+                : 'https://tesmohamadasep.sirv.com/duaenam-grp-source/assets/kostraktor/kamar1.png',
             'additional_images': r['additional_images'],
             'features': (r['facilities'] as String?)?.split(',').map((e) => e.trim()).toList() ?? [],
             'location': 'Pasar Rebo, Jakarta Timur',
