@@ -16,6 +16,12 @@ class Booking(Base):
     
     status = Column(String, default="PENDING") # PENDING, APPROVED, REJECTED
     
+    # Document URLs
+    ktp_image_url = Column(String, nullable=True)
+    selfie_image_url = Column(String, nullable=True)
+    bukti_bayar_url = Column(String, nullable=True)
+    referensi_transaksi = Column(String, nullable=True)
+    
     # Relationships
     user = relationship("User")
     room = relationship("KostRoom", back_populates="bookings")

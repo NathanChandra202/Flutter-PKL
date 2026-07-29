@@ -26,6 +26,12 @@ class BookingResponse(BaseModel):
     room_name: Optional[str] = None
     user_email: Optional[str] = None
     user_name: Optional[str] = None
+    
+    # Document fields
+    ktp_image_url: Optional[str] = None
+    selfie_image_url: Optional[str] = None
+    bukti_bayar_url: Optional[str] = None
+    referensi_transaksi: Optional[str] = None
 
     class Config:
         orm_mode = True
@@ -51,6 +57,49 @@ def create_booking(booking_in: BookingCreate, db: Session = Depends(deps.get_db)
     db.refresh(booking)
     
     return _to_booking_response(booking)
+
+import os
+import uuid
+from fastapi import File, UploadFile
+
+@router.post("/{booking_id}/upload-documents")
+async def upload_booking_documents(
+    booking_id: int,
+    ktp_image: UploadFile = File(None),
+    selfie_image: UploadFile = File(None),
+    bukti_bayar: UploadFile = File(None),
+    db: Session = Depends(deps.get_db),
+    # Optional: check if user owns the booking or is admin
+):
+    booking = db.query(Booking).filter(Booking.id == booking_id).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    upload_dir = "uploads/bookings"
+    os.makedirs(upload_dir, exist_ok=True)
+
+    async def save_file(file: UploadFile, prefix: str) -> str:
+        ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
+        filename = f"{prefix}_{uuid.uuid4()}.{ext}"
+        filepath = os.path.join(upload_dir, filename)
+        with open(filepath, "wb") as f:
+            f.write(await file.read())
+        return f"/uploads/bookings/{filename}"
+
+    if ktp_image:
+        booking.ktp_image_url = await save_file(ktp_image, "ktp")
+    if selfie_image:
+        booking.selfie_image_url = await save_file(selfie_image, "selfie")
+    if bukti_bayar:
+        booking.bukti_bayar_url = await save_file(bukti_bayar, "bukti")
+
+    db.commit()
+    db.refresh(booking)
+    return {
+        "ktp_image_url": booking.ktp_image_url,
+        "selfie_image_url": booking.selfie_image_url,
+        "bukti_bayar_url": booking.bukti_bayar_url,
+    }
 
 @router.get("/me", response_model=List[BookingResponse])
 def get_my_bookings(db: Session = Depends(deps.get_db), current_user: User = Depends(deps.get_current_active_user)):
@@ -93,5 +142,9 @@ def _to_booking_response(booking: Booking) -> BookingResponse:
         status=booking.status,
         room_name=booking.room.name if booking.room else "Unknown Room",
         user_email=booking.user.email if booking.user else "",
-        user_name=booking.user.profile.nama_lengkap if booking.user and booking.user.profile else ""
+        user_name=booking.user.profile.nama_lengkap if booking.user and booking.user.profile else "",
+        ktp_image_url=booking.ktp_image_url,
+        selfie_image_url=booking.selfie_image_url,
+        bukti_bayar_url=booking.bukti_bayar_url,
+        referensi_transaksi=booking.referensi_transaksi
     )

@@ -34,6 +34,7 @@ app.include_router(reviews.router, prefix=f"{settings.API_V1_STR}/reviews", tags
 os.makedirs("uploads/rooms", exist_ok=True)
 os.makedirs("uploads/ktp", exist_ok=True)
 os.makedirs("uploads/selfies", exist_ok=True)
+os.makedirs("uploads/bookings", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 
