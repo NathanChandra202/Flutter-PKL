@@ -60,20 +60,6 @@ export default function BookingsPage() {
         <p className="text-brand-muted text-sm mt-0.5">{bookings.length} booking pending menunggu persetujuan</p>
       </div>
 
-      {/* ── Data Completeness Notice ──────────────────────────────────────────── */}
-      <div className="bg-brand-black/10 border border-gray-200 rounded-xl p-4 flex gap-3">
-        <span className="text-brand-black text-lg shrink-0">⚠️</span>
-        <div className="text-sm">
-          <p className="text-amber-700 font-semibold mb-1">Catatan: Data booking tidak lengkap</p>
-          <p className="text-amber-700 leading-relaxed">
-            Saat ini backend hanya menyimpan <strong>nama kamar, tanggal mulai, dan status</strong> booking.
-            Foto KTP, selfie, dan bukti bayar yang dikirim dari app Flutter <strong>tidak tersimpan di database</strong>
-            — hanya ada di memori lokal app. Untuk melihat dokumen tersebut dari dashboard ini,
-            backend perlu diupdate untuk menyimpan file-file tersebut.
-          </p>
-        </div>
-      </div>
-
       <div className="bg-brand-surface border border-gray-200 rounded-2xl overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-20 text-brand-muted">Memuat data...</div>
