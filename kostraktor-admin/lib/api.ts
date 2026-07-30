@@ -1,5 +1,5 @@
 // ─── API base URL ──────────────────────────────────────────────────────────────
-const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? " https://dev-api-kostraktor.duaenam.id/api/v1";
+const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://dev-api-kostraktor.duaenam.id/api/v1";
 
 // ─── Cookie helpers (browser-side) ─────────────────────────────────────────────
 const TOKEN_KEY = "kostraktor_admin_token";
