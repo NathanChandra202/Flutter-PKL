@@ -115,6 +115,15 @@ def get_pending_bookings(db: Session = Depends(deps.get_db), current_user: User 
     bookings = db.query(Booking).filter(Booking.status == "PENDING").all()
     return [_to_booking_response(b) for b in bookings]
 
+@router.get("/all", response_model=List[BookingResponse])
+def get_all_bookings(db: Session = Depends(deps.get_db), current_user: User = Depends(deps.get_current_active_user)):
+    # Simple admin check
+    if current_user.role.name not in ["Admin", "SuperAdmin"]:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+        
+    bookings = db.query(Booking).all()
+    return [_to_booking_response(b) for b in bookings]
+
 class StatusUpdate(BaseModel):
     status: str
 
@@ -128,7 +137,7 @@ def update_booking_status(booking_id: int, status_update: StatusUpdate, db: Sess
         raise HTTPException(status_code=404, detail="Booking not found")
         
     booking.status = status_update.status
-    db.commit()
+    db.commit() 
     db.refresh(booking)
     return _to_booking_response(booking)
 

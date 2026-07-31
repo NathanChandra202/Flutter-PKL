@@ -58,14 +58,27 @@ class _JastipScreenState extends State<JastipScreen> {
 
   Future<void> _addListing(String title, String desc, String price, String wa) async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    final result = await auth.createJastipListing(
-      title: title,
-      description: desc,
-      price: price,
-      waNumber: wa,
-    );
-    if (result != null) {
-      await _loadListings();
+    try {
+      final result = await auth.createJastipListing(
+        title: title,
+        description: desc,
+        price: price,
+        waNumber: wa,
+      );
+      if (result != null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Jastip berhasil ditambahkan!'), backgroundColor: Colors.green),
+          );
+        }
+        await _loadListings();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Colors.redAccent),
+        );
+      }
     }
   }
 
@@ -349,7 +362,19 @@ class _JastipScreenState extends State<JastipScreen> {
                 GestureDetector(
                   onTap: () async {
                     if (item.id != null) {
-                      await auth.deleteJastipListing(item.id!);
+                      final err = await auth.deleteJastipListing(item.id!);
+                      if (!context.mounted) return;
+                      if (err != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(err),
+                            backgroundColor: Colors.redAccent,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        );
+                        return;
+                      }
                       await _loadListings();
                     } else {
                       setState(() => _listings.removeWhere((l) => l['id'] == item.id));

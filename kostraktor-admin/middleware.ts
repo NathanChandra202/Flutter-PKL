@@ -13,10 +13,6 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (pathname === "/" && token) {
-    return NextResponse.redirect(new URL("/rooms", request.url));
-  }
-
   return NextResponse.next();
 }
 

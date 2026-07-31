@@ -3,14 +3,18 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import Image from "next/image";
 import type { MeResponse } from "@/lib/api";
 
+import { LayoutDashboard, BedDouble, ClipboardList, ShoppingBag, Wrench, Star, LogOut } from "lucide-react";
+
 const NAV_ITEMS = [
-  { href: "/rooms", label: "Kelola Kamar", icon: "🏠" },
-  { href: "/bookings", label: "Kelola Booking", icon: "📋" },
-  { href: "/jastip", label: "Kelola Jastip", icon: "🛵" },
-  { href: "/tools", label: "Kelola Alat", icon: "🔧" },
-  { href: "/reviews", label: "Kelola Ulasan", icon: "⭐" },
+  { href: "/", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
+  { href: "/rooms", label: "Kelola Kamar", icon: <BedDouble size={18} /> },
+  { href: "/bookings", label: "Kelola Booking", icon: <ClipboardList size={18} /> },
+  { href: "/jastip", label: "Kelola Jastip", icon: <ShoppingBag size={18} /> },
+  { href: "/tools", label: "Kelola Alat", icon: <Wrench size={18} /> },
+  { href: "/reviews", label: "Kelola Ulasan", icon: <Star size={18} /> },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -53,8 +57,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
       `}>
         {/* Brand */}
-        <div className="h-16 flex items-center gap-3 px-5 border-b border-gray-100 shrink-0">
-          <div className="w-8 h-8 bg-brand-black rounded-lg flex items-center justify-center text-brand-gold font-heading font-bold text-sm shadow-sm">K</div>
+        <div className="h-16 flex items-center gap-3 px-4 border-b border-gray-100 shrink-0">
+          <Image
+            src="https://cdn.duaenam.id/logos/kostraktor.png" 
+            alt="Kostraktor"
+            width={40}
+            height={40}
+            className="rounded-lg shrink-0"
+          />
           <div>
             <p className="text-brand-black font-heading font-bold text-sm leading-tight tracking-tight">KOSTRAKTOR</p>
             <p className="text-brand-muted text-xs">Admin Dashboard</p>
@@ -64,7 +74,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {NAV_ITEMS.map((item) => {
-            const active = pathname.startsWith(item.href);
+            const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
             return (
               <Link
                 key={item.href}
@@ -78,7 +88,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   }
                 `}
               >
-                <span className="text-base">{item.icon}</span>
+                <span className="text-brand-black/70 flex items-center justify-center">{item.icon}</span>
                 {item.label}
               </Link>
             );
@@ -102,7 +112,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-brand-muted hover:text-red-600 hover:bg-red-50 transition-all"
           >
-            <span>🚪</span> Logout
+            <LogOut size={18} /> Logout
           </button>
         </div>
       </aside>

@@ -833,7 +833,6 @@ class _DetailScreenState extends State<DetailScreen> {
                             );
 
                             // Close dialog first, then await network call
-                            commentController.dispose();
                             Navigator.pop(context);
 
                             final error = await auth.submitReview(

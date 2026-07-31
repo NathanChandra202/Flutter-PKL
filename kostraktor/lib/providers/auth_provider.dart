@@ -438,33 +438,74 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// Called after booking form is submitted — upgrades status to pendingResident
-  Future<void> submitBooking(BookingData data) async {
+  Future<String?> submitBooking(BookingData data) async {
+    if (_accessToken == null) return 'Sesi telah berakhir, silakan login kembali.';
+
+    int? bookingId;
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/bookings/'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_accessToken',
+        },
+        body: json.encode({
+          'room_name': data.roomType,
+          'start_date':
+              data.tanggalMulaiMenghuni?.toIso8601String() ??
+              DateTime.now().toIso8601String(),
+        }),
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        try {
+          final errData = json.decode(response.body);
+          return errData['detail'] ?? 'Gagal menyimpan data booking ke server.';
+        } catch (_) {
+          return 'Gagal menyimpan data booking ke server (Status ${response.statusCode}).';
+        }
+      }
+      
+      final responseData = json.decode(response.body);
+      bookingId = responseData['id'];
+    } catch (e) {
+      print('Error submitting booking: $e');
+      return 'Terjadi kesalahan jaringan. Gagal menyimpan booking.';
+    }
+
+    if (bookingId != null && (data.ktpBytes != null || data.selfieBytes != null || data.buktiBayarBytes != null)) {
+      try {
+        final request = http.MultipartRequest(
+          'POST',
+          Uri.parse('$_baseUrl/bookings/$bookingId/upload-documents'),
+        );
+        request.headers['Authorization'] = 'Bearer $_accessToken';
+
+        if (data.ktpBytes != null) {
+          request.files.add(http.MultipartFile.fromBytes('ktp_image', data.ktpBytes!, filename: 'ktp.jpg'));
+        }
+        if (data.selfieBytes != null) {
+          request.files.add(http.MultipartFile.fromBytes('selfie_image', data.selfieBytes!, filename: 'selfie.jpg'));
+        }
+        if (data.buktiBayarBytes != null) {
+          request.files.add(http.MultipartFile.fromBytes('bukti_bayar', data.buktiBayarBytes!, filename: 'bukti.jpg'));
+        }
+
+        final streamedResponse = await request.send();
+        if (streamedResponse.statusCode != 200) {
+          return 'Booking berhasil dibuat, namun gagal mengunggah dokumen (Status ${streamedResponse.statusCode}). Silakan upload ulang nanti.';
+        }
+      } catch (e) {
+        print('Error uploading documents: $e');
+        return 'Booking berhasil, tetapi terjadi kesalahan jaringan saat mengunggah dokumen.';
+      }
+    }
+
     _bookingData = data;
     _currentRole = UserRole.pendingResident;
 
     if (_userEmail != null && _registeredUsers.containsKey(_userEmail)) {
       _registeredUsers[_userEmail!]!['role'] = 'pendingResident';
-    }
-
-    if (_accessToken != null) {
-      try {
-        await http.post(
-          Uri.parse('$_baseUrl/bookings'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $_accessToken',
-          },
-          body: json.encode({
-            'room_name': data.roomType,
-            'start_date':
-                data.tanggalMulaiMenghuni?.toIso8601String() ??
-                DateTime.now().toIso8601String(),
-          }),
-        );
-      } catch (e) {
-        // Fallback for offline mode
-        print('Error submitting booking: $e');
-      }
     }
 
     // Always add to local pending approvals queue so Admin can see the full data
@@ -485,6 +526,7 @@ class AuthProvider extends ChangeNotifier {
     );
 
     notifyListeners();
+    return null; // success
   }
 
   Future<void> loadPendingBookings() async {
@@ -494,8 +536,8 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> updateBookingStatus(int bookingId, String status) async {
-    if (_accessToken == null) return false;
+  Future<String?> updateBookingStatus(int bookingId, String status) async {
+    if (_accessToken == null) return 'Sesi telah berakhir, silakan login kembali.';
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/bookings/$bookingId/status'),
@@ -505,10 +547,19 @@ class AuthProvider extends ChangeNotifier {
         },
         body: json.encode({'status': status}),
       );
-      return response.statusCode == 200;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return null;
+      } else {
+        try {
+          final errData = json.decode(response.body);
+          return errData['detail'] ?? 'Gagal mengupdate status (Status ${response.statusCode}).';
+        } catch (_) {
+          return 'Gagal mengupdate status (Status ${response.statusCode}).';
+        }
+      }
     } catch (e) {
       print('Error updating booking status: $e');
-      return false;
+      return 'Terjadi kesalahan jaringan saat mengupdate status.';
     }
   }
 
@@ -533,7 +584,7 @@ class AuthProvider extends ChangeNotifier {
     required String price,
     required String waNumber,
   }) async {
-    if (_accessToken == null) return null;
+    if (_accessToken == null) throw Exception('Sesi telah berakhir, silakan login kembali.');
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/jastip/'),
@@ -548,26 +599,43 @@ class AuthProvider extends ChangeNotifier {
           'wa_number': waNumber,
         }),
       );
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return json.decode(response.body);
+      } else {
+        try {
+          final errData = json.decode(response.body);
+          throw Exception(errData['detail'] ?? 'Gagal membuat jastip (Status ${response.statusCode}).');
+        } catch (_) {
+          throw Exception('Gagal membuat jastip (Status ${response.statusCode}).');
+        }
       }
     } catch (e) {
+      if (e is Exception) rethrow;
       print('Error creating jastip: $e');
+      throw Exception('Terjadi kesalahan jaringan.');
     }
-    return null;
   }
 
-  Future<bool> deleteJastipListing(int listingId) async {
-    if (_accessToken == null) return false;
+  Future<String?> deleteJastipListing(int listingId) async {
+    if (_accessToken == null) return 'Sesi telah berakhir, silakan login kembali.';
     try {
       final response = await http.delete(
         Uri.parse('$_baseUrl/jastip/$listingId'),
         headers: {'Authorization': 'Bearer $_accessToken'},
       );
-      return response.statusCode == 200;
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        return null;
+      } else {
+        try {
+          final errData = json.decode(response.body);
+          return errData['detail'] ?? 'Gagal menghapus jastip (Status ${response.statusCode}).';
+        } catch (_) {
+          return 'Gagal menghapus jastip (Status ${response.statusCode}).';
+        }
+      }
     } catch (e) {
       print('Error deleting jastip: $e');
-      return false;
+      return 'Terjadi kesalahan jaringan saat menghapus jastip.';
     }
   }
 
@@ -596,19 +664,31 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<Map<String, dynamic>?> createRoom(Map<String, dynamic> data) async {
+    if (_accessToken == null) throw Exception('Sesi telah berakhir, silakan login kembali.');
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/rooms/'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_accessToken',
+        },
         body: json.encode(data),
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
         return json.decode(response.body) as Map<String, dynamic>;
+      } else {
+        try {
+          final errData = json.decode(response.body);
+          throw Exception(errData['detail'] ?? 'Gagal membuat kamar (Status ${response.statusCode}).');
+        } catch (_) {
+          throw Exception('Gagal membuat kamar (Status ${response.statusCode}).');
+        }
       }
     } catch (e) {
+      if (e is Exception) rethrow;
       print('Error creating room: $e');
+      throw Exception('Terjadi kesalahan jaringan saat membuat kamar.');
     }
-    return null;
   }
 
   Future<List<String>?> uploadRoomImages(

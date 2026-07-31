@@ -68,23 +68,38 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               // Approve locally first so the local session knows the user is a resident
               auth.adminApproveUser(_selectedUser!.email, _roomController.text.trim());
 
+              String? error;
               if (_selectedUser!.id != null) {
-                await auth.updateBookingStatus(_selectedUser!.id!, 'APPROVED');
-                await auth.loadPendingBookings();
+                error = await auth.updateBookingStatus(_selectedUser!.id!, 'APPROVED');
+                if (error == null) {
+                  await auth.loadPendingBookings();
+                }
               }
               if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('${_selectedUser!.name} berhasil di-approve sebagai Penghuni Aktif!'),
-                  backgroundColor: Colors.green.shade700,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-              );
-              setState(() {
-                _selectedUser = null;
-                _roomController.clear();
-              });
+
+              if (error != null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(error),
+                    backgroundColor: Colors.redAccent,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('${_selectedUser!.name} berhasil di-approve sebagai Penghuni Aktif!'),
+                    backgroundColor: Colors.green.shade700,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                );
+                setState(() {
+                  _selectedUser = null;
+                  _roomController.clear();
+                });
+              }
             },
             child: const Text('Ya, Approve'),
           ),
@@ -118,23 +133,38 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             onPressed: () async {
               Navigator.pop(ctx);
               
+              String? error;
               if (_selectedUser!.id != null) {
-                await auth.updateBookingStatus(_selectedUser!.id!, 'REJECTED');
-                await auth.loadPendingBookings();
+                error = await auth.updateBookingStatus(_selectedUser!.id!, 'REJECTED');
+                if (error == null) {
+                  await auth.loadPendingBookings();
+                }
               }
               if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Booking ${_selectedUser!.name} ditolak.'),
-                  backgroundColor: Colors.redAccent,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-              );
-              setState(() {
-                _selectedUser = null;
-                _roomController.clear();
-              });
+
+              if (error != null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(error),
+                    backgroundColor: Colors.redAccent,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Booking ${_selectedUser!.name} ditolak.'),
+                    backgroundColor: Colors.redAccent,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                );
+                setState(() {
+                  _selectedUser = null;
+                  _roomController.clear();
+                });
+              }
             },
             child: const Text('Ya, Tolak'),
           ),

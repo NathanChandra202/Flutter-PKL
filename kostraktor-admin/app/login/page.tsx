@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -39,13 +40,17 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo / Branding */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-brand-black rounded-2xl mb-4 shadow-lg shadow-black/10">
-            <svg className="w-8 h-8 text-brand-gold" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
-            </svg>
+          <div className="inline-flex items-center justify-center mb-4">
+            <Image
+              src="https://cdn.duaenam.id/logos/kostraktor.png" 
+              alt="Kostraktor"
+              width={200}
+              height={200}
+              className="rounded-2xl shadow-lg"
+              priority
+            />
           </div>
-          <h1 className="text-3xl font-heading font-bold text-brand-black tracking-tight">KOSTRAKTOR</h1>
-          <p className="text-brand-muted text-sm mt-2">Admin Dashboard</p>
+          <p className="text-slate-400 text-sm mt-1">Dashboard Manajemen Kost</p>
         </div>
 
         {/* Card */}

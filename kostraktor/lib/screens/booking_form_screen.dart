@@ -338,10 +338,21 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
       selfieBytes: _selfieBytes,
     );
 
-    await auth.submitBooking(booking);
+    final errorMsg = await auth.submitBooking(booking);
     
     if (!mounted) return;
     setState(() => _isLoading = false);
+
+    if (errorMsg != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMsg),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
     Navigator.push(
       context,
