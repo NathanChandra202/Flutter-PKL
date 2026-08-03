@@ -3,12 +3,26 @@
 import { useEffect, useState } from "react";
 import type { Tool } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
+import { 
+  Sparkles, 
+  Ruler, 
+  Hammer, 
+  ShoppingCart, 
+  Wrench, 
+  User, 
+  Calendar,
+  PackageCheck,
+  UserCheck,
+  Check,
+  X,
+  type LucideIcon
+} from "lucide-react";
 
-const ICON_MAP: Record<string, string> = {
-  cleaning_services: "🧹",
-  straighten: "📏",
-  handyman: "🔨",
-  shopping_cart: "🛒",
+const ICON_MAP: Record<string, LucideIcon> = {
+  cleaning_services: Sparkles,
+  straighten: Ruler,
+  handyman: Hammer,
+  shopping_cart: ShoppingCart,
 };
 
 export default function ToolsPage() {
@@ -133,10 +147,13 @@ export default function ToolsPage() {
                     tool.is_available ? "border-gray-200" : "border-gray-200 bg-brand-black/5"
                   }`}
                 >
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0 ${
-                    tool.is_available ? "bg-gray-50" : "bg-brand-black/10"
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
+                    tool.is_available ? "bg-gray-50 text-gray-700" : "bg-brand-black/10 text-brand-black"
                   }`}>
-                    {ICON_MAP[tool.icon_name] ?? "🔧"}
+                    {(() => {
+                      const Icon = ICON_MAP[tool.icon_name] || Wrench;
+                      return <Icon size={24} />;
+                    })()}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-brand-black font-semibold">{tool.name}</p>
@@ -146,15 +163,21 @@ export default function ToolsPage() {
                           ? "bg-brand-green/10 text-brand-green border-brand-green/20"
                           : "bg-brand-black/10 text-brand-black border-gray-200"
                       }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${tool.is_available ? "bg-brand-green" : "bg-amber-400"}`} />
+                        {tool.is_available ? <PackageCheck size={14} /> : <UserCheck size={14} />}
                         {tool.is_available ? "Tersedia" : "Dipinjam"}
                       </span>
                     </div>
                     {!tool.is_available && (
-                      <div className="mt-2 text-xs text-brand-muted space-y-0.5">
-                        <p>👤 <span className="text-brand-black">{tool.borrowed_by_name ?? "—"}</span></p>
+                      <div className="mt-2 text-xs text-brand-muted space-y-1">
+                        <p className="flex items-center gap-1.5">
+                          <User size={14} className="text-brand-muted" /> 
+                          <span className="text-brand-black">{tool.borrowed_by_name ?? "—"}</span>
+                        </p>
                         {tool.borrowed_at && (
-                          <p>📅 <span className="text-brand-black">{formatDate(tool.borrowed_at)}</span></p>
+                          <p className="flex items-center gap-1.5">
+                            <Calendar size={14} className="text-brand-muted" /> 
+                            <span className="text-brand-black">{formatDate(tool.borrowed_at)}</span>
+                          </p>
                         )}
                       </div>
                     )}
@@ -183,18 +206,18 @@ export default function ToolsPage() {
               <div>
                 <label className="block text-sm font-medium text-brand-black mb-1.5">Ikon</label>
                 <div className="grid grid-cols-4 gap-2">
-                  {Object.entries(ICON_MAP).map(([key, emoji]) => (
+                  {Object.entries(ICON_MAP).map(([key, IconComponent]) => (
                     <button
                       key={key}
                       type="button"
                       onClick={() => setNewIcon(key)}
-                      className={`h-10 rounded-lg text-lg border transition-colors ${
+                      className={`h-10 flex items-center justify-center rounded-lg border transition-colors ${
                         newIcon === key 
                           ? "bg-brand-black text-white border-brand-black" 
                           : "bg-gray-50 border-gray-200 text-brand-black hover:bg-gray-100"
                       }`}
                     >
-                      {emoji}
+                      <IconComponent size={20} />
                     </button>
                   ))}
                 </div>
@@ -226,8 +249,11 @@ export default function ToolsPage() {
                 {pendingTools.map((tool) => (
                   <div key={tool.id} className="border border-gray-100 rounded-xl p-3 bg-gray-50">
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 h-10 bg-white rounded-lg border border-gray-100 flex items-center justify-center text-xl shrink-0">
-                        {ICON_MAP[tool.icon_name] ?? "🔧"}
+                      <div className="w-10 h-10 bg-white rounded-lg border border-gray-100 flex items-center justify-center shrink-0 text-gray-700">
+                        {(() => {
+                          const Icon = ICON_MAP[tool.icon_name] || Wrench;
+                          return <Icon size={20} />;
+                        })()}
                       </div>
                       <div>
                         <p className="font-semibold text-brand-black text-sm">{tool.name}</p>
@@ -237,15 +263,15 @@ export default function ToolsPage() {
                     <div className="flex gap-2">
                       <button 
                         onClick={() => handleReview(tool.id, "APPROVED")}
-                        className="flex-1 py-1.5 bg-brand-green/10 text-brand-green text-sm font-medium rounded-lg hover:bg-brand-green/20"
+                        className="flex-1 py-1.5 bg-brand-green/10 text-brand-green text-sm font-medium rounded-lg hover:bg-brand-green/20 flex items-center justify-center gap-1.5"
                       >
-                        Setujui
+                        <Check size={16} /> Setujui
                       </button>
                       <button 
                         onClick={() => handleReview(tool.id, "REJECTED")}
-                        className="flex-1 py-1.5 bg-red-50 text-red-600 text-sm font-medium rounded-lg hover:bg-red-100"
+                        className="flex-1 py-1.5 bg-red-50 text-red-600 text-sm font-medium rounded-lg hover:bg-red-100 flex items-center justify-center gap-1.5"
                       >
-                        Tolak
+                        <X size={16} /> Tolak
                       </button>
                     </div>
                   </div>

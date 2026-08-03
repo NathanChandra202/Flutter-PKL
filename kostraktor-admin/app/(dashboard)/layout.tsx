@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import type { MeResponse } from "@/lib/api";
 
-import { LayoutDashboard, BedDouble, ClipboardList, ShoppingBag, Wrench, Star, LogOut } from "lucide-react";
+import { LayoutDashboard, BedDouble, ClipboardList, ShoppingBag, Wrench, Star, LogOut, ClipboardCheck } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { href: "/jastip", label: "Kelola Jastip", icon: <ShoppingBag size={18} /> },
   { href: "/tools", label: "Kelola Alat", icon: <Wrench size={18} /> },
   { href: "/reviews", label: "Kelola Ulasan", icon: <Star size={18} /> },
+  { href: "/reports", label: "Audit Laporan", icon: <ClipboardCheck size={18} /> },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

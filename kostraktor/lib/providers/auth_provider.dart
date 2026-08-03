@@ -1154,6 +1154,87 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+    }
+  }
+
+  // ─── Reports API ──────────────────────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> fetchMyReports() async {
+    if (_accessToken == null) return [];
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/reports/me'),
+        headers: {'Authorization': 'Bearer $_accessToken'},
+      );
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      }
+    } catch (e) {
+      print('Error fetching my reports: $e');
+    }
+    return [];
+  }
+
+  Future<Map<String, dynamic>?> submitReport({
+    required String title,
+    required String description,
+    String? category,
+  }) async {
+    if (_accessToken == null) throw Exception('Sesi telah berakhir, silakan login kembali.');
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/reports/'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_accessToken',
+        },
+        body: json.encode({
+          'title': title,
+          'description': description,
+          if (category != null) 'category': category,
+        }),
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return json.decode(response.body);
+      } else {
+        try {
+          final errData = json.decode(response.body);
+          throw Exception(errData['detail'] ?? 'Gagal membuat laporan.');
+        } catch (_) {
+          throw Exception('Gagal membuat laporan (Status ${response.statusCode}).');
+        }
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      print('Error submitting report: $e');
+      throw Exception('Terjadi kesalahan jaringan.');
+    }
+  }
+
+  Future<String?> uploadReportPhoto(int reportId, Uint8List photoBytes) async {
+    if (_accessToken == null) return 'Sesi telah berakhir.';
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$_baseUrl/reports/$reportId/upload-photo'),
+      );
+      request.headers['Authorization'] = 'Bearer $_accessToken';
+      request.files.add(http.MultipartFile.fromBytes('photo', photoBytes, filename: 'report_$reportId.jpg'));
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['photo_url'];
+      }
+    } catch (e) {
+      print('Error uploading report photo: $e');
+    }
+    return null;
+  }
+
   UserRole _parseRole(String role) {
     switch (role.toLowerCase()) {
       case 'resident':

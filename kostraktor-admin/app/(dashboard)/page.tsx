@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid,
 } from "recharts";
 import { BedDouble, ClipboardList, CheckCircle, Home, TrendingUp, AlertCircle } from "lucide-react";
+import BookingRadarChart from "@/components/BookingRadarChart";
 
 const ROOM_COLORS = ["#10b981", "#f59e0b"];
 const BOOKING_FILL: Record<string, string> = {
@@ -58,8 +58,10 @@ export default function DashboardOverviewPage() {
     availableRooms: 0,
     occupiedRooms: 0,
     pendingBookings: 0,
+    pendingBookings: 0,
     approvedBookings: 0,
     rejectedBookings: 0,
+    unhandledReports: 0,
   });
 
   useEffect(() => {
@@ -95,6 +97,14 @@ export default function DashboardOverviewPage() {
         const approvedBookings = allBookings.filter((b: any) => b.status === "APPROVED").length;
         const rejectedBookings = allBookings.filter((b: any) => b.status === "REJECTED").length;
 
+        // Fetch reports
+        const reportsRes = await fetch("/api/proxy?path=/reports/");
+        let unhandledReports = 0;
+        if (reportsRes.ok) {
+          const allReports = await reportsRes.json();
+          unhandledReports = allReports.filter((r: any) => r.status === "OPEN").length;
+        }
+
         setStats({
           totalRooms,
           availableRooms,
@@ -102,6 +112,7 @@ export default function DashboardOverviewPage() {
           pendingBookings,
           approvedBookings,
           rejectedBookings,
+          unhandledReports,
         });
       } catch (err) {
         console.error("Failed to fetch dashboard data", err);
@@ -161,6 +172,7 @@ export default function DashboardOverviewPage() {
             <SkeletonCard />
             <SkeletonCard />
             <SkeletonCard />
+            <SkeletonCard />
           </>
         ) : error ? (
           <div className="col-span-full p-5 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-3 text-red-700">
@@ -191,6 +203,13 @@ export default function DashboardOverviewPage() {
               value={stats.pendingBookings}
               accent="bg-orange-50"
               sub="Menunggu persetujuan"
+            />
+            <StatCard
+              icon={<AlertCircle size={22} className="text-red-600" />}
+              label="Laporan Baru"
+              value={stats.unhandledReports}
+              accent="bg-red-50"
+              sub="Menunggu ditangani"
             />
             <StatCard
               icon={<CheckCircle size={22} className="text-brand-black" />}
@@ -278,24 +297,12 @@ export default function DashboardOverviewPage() {
               <p className="text-xs text-brand-muted mt-0.5">Total {totalBookings} booking terdaftar di sistem</p>
             </div>
             {totalBookings > 0 ? (
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={bookingChartData} barCategoryGap="40%">
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis dataKey="status" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 600, fill: "#64748b" }} />
-                    <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#94a3b8" }} width={28} />
-                    <Tooltip
-                      contentStyle={{ borderRadius: "12px", border: "1px solid #e5e7eb", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)", fontSize: "13px" }}
-                      cursor={{ fill: "rgba(0,0,0,0.04)" }}
-                      formatter={(value) => [`${value ?? 0} booking`, "Jumlah"]}
-                    />
-                    <Bar dataKey="jumlah" radius={[8, 8, 0, 0]}>
-                      {bookingChartData.map((entry, index) => (
-                        <Cell key={`bar-${index}`} fill={entry.fill} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className="h-64 w-full flex items-center justify-center">
+                <BookingRadarChart
+                  pending={stats.pendingBookings}
+                  approved={stats.approvedBookings}
+                  rejected={stats.rejectedBookings}
+                />
               </div>
             ) : (
               <div className="h-64 w-full flex flex-col items-center justify-center text-brand-muted gap-2">

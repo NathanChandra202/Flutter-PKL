@@ -5,7 +5,7 @@ import '../utils/app_theme.dart';
 
 import 'home_screen.dart';
 import 'jastip_screen.dart';
-import 'passport_screen.dart';
+import 'lapor_screen.dart';
 import 'profile_screen.dart';
 import 'admin_panel_screen.dart';
 
@@ -22,7 +22,7 @@ class _MainNavigationState extends State<MainNavigation> {
   final List<Widget> _allScreens = [
     const HomeScreen(),
     const JastipScreen(),
-    const PassportScreen(),
+    const LaporScreen(),
     const ProfileScreen(),
   ];
 
