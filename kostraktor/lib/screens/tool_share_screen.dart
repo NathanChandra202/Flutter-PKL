@@ -57,6 +57,12 @@ class _ToolShareScreenState extends State<ToolShareScreen> {
           child: Container(color: Colors.grey.shade200, height: 1.0),
         ),
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showAddToolDialog(context),
+        backgroundColor: AppTheme.primaryBlack,
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text('Ajukan Alat', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -160,6 +166,95 @@ class _ToolShareScreenState extends State<ToolShareScreen> {
                   ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showAddToolDialog(BuildContext context) {
+    final nameController = TextEditingController();
+    String selectedIcon = 'handyman';
+    bool isSubmitting = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('Ajukan Alat Bersama Baru', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryBlack)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: nameController,
+                decoration: InputDecoration(
+                  labelText: 'Nama Alat',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text('Pilih Ikon:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 12,
+                children: _toolIcons.keys.map((iconName) {
+                  final isSelected = selectedIcon == iconName;
+                  return GestureDetector(
+                    onTap: () => setModalState(() => selectedIcon = iconName),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppTheme.primaryBlack : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: isSelected ? AppTheme.primaryBlack : Colors.grey.shade300),
+                      ),
+                      child: Icon(_toolIcons[iconName], color: isSelected ? Colors.white : Colors.grey.shade600),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryBlack,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: isSubmitting ? null : () async {
+                  if (nameController.text.trim().isEmpty) return;
+                  setModalState(() => isSubmitting = true);
+                  try {
+                    final auth = Provider.of<AuthProvider>(context, listen: false);
+                    await auth.submitTool(nameController.text.trim(), selectedIcon);
+                    if (ctx.mounted) {
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: const Text('Pengajuan alat berhasil! Menunggu persetujuan admin.'),
+                        backgroundColor: Colors.green.shade700,
+                        behavior: SnackBarBehavior.floating,
+                      ));
+                    }
+                  } catch (e) {
+                    if (ctx.mounted) {
+                      setModalState(() => isSubmitting = false);
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text('Error: ${e.toString()}'),
+                        backgroundColor: Colors.red.shade700,
+                        behavior: SnackBarBehavior.floating,
+                      ));
+                    }
+                  }
+                },
+                child: isSubmitting 
+                  ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : const Text('Ajukan Sekarang', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

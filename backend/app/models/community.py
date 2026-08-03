@@ -28,6 +28,10 @@ class SharedTool(Base):
     icon_name = Column(String, nullable=False, default="handyman")
     is_available = Column(Boolean, default=True)
     
+    # Tool approval status (PENDING, APPROVED, REJECTED)
+    status = Column(String, default="APPROVED", nullable=False)
+    submitted_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    
     # Who is currently borrowing it
     borrowed_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     borrowed_by = relationship("User", foreign_keys=[borrowed_by_user_id])

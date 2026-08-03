@@ -795,6 +795,36 @@ class AuthProvider extends ChangeNotifier {
     return [];
   }
 
+  Future<Map<String, dynamic>?> submitTool(String name, String iconName) async {
+    if (_accessToken == null) throw Exception('Sesi telah berakhir, silakan login kembali.');
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/tools/'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_accessToken',
+        },
+        body: json.encode({
+          'name': name,
+          'icon_name': iconName,
+        }),
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return json.decode(response.body);
+      } else {
+        try {
+          final errData = json.decode(response.body);
+          throw Exception(errData['detail'] ?? 'Gagal menambah alat (Status ${response.statusCode}).');
+        } catch (_) {
+          throw Exception('Gagal menambah alat (Status ${response.statusCode}).');
+        }
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Terjadi kesalahan jaringan.');
+    }
+  }
+
   Future<Map<String, dynamic>?> borrowTool(int toolId) async {
     if (_accessToken == null) return null;
     try {
