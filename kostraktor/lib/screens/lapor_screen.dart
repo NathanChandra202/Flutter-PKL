@@ -52,7 +52,7 @@ class _LaporScreenState extends State<LaporScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.bgLight,
+      backgroundColor: AppTheme.bgWhite,
       appBar: AppBar(
         title: const Text('Laporan Anda', style: TextStyle(color: AppTheme.primaryBlack, fontWeight: FontWeight.bold, fontSize: 18)),
         backgroundColor: Colors.white,
@@ -322,7 +322,7 @@ class _AddReportFormState extends State<_AddReportForm> {
           const SizedBox(height: 16),
           if (_error != null)
             Container(
-              margin: const EdgeInsets.bottom(16),
+              margin: const EdgeInsets.only(bottom: 16),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8)),
               child: Text(_error!, style: TextStyle(color: Colors.red.shade700, fontSize: 12)),

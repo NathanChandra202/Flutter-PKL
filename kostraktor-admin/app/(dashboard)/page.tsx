@@ -58,7 +58,6 @@ export default function DashboardOverviewPage() {
     availableRooms: 0,
     occupiedRooms: 0,
     pendingBookings: 0,
-    pendingBookings: 0,
     approvedBookings: 0,
     rejectedBookings: 0,
     unhandledReports: 0,

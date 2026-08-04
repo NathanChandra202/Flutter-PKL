@@ -42,11 +42,11 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center mb-4">
             <Image
-              src="https://cdn.duaenam.id/logos/kostraktor.png" 
+              src="https://cdn.duaenam.id/logos/kostraktor.png"
               alt="Kostraktor"
               width={200}
               height={200}
-              className="rounded-2xl shadow-lg"
+              className="rounded-2xl shadow-lg w-auto h-auto"
               priority
             />
           </div>

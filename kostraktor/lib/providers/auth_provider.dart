@@ -1154,9 +1154,6 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-    }
-  }
-
   // ─── Reports API ──────────────────────────────────────────────────────────
 
   Future<List<Map<String, dynamic>>> fetchMyReports() async {

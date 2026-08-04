@@ -64,7 +64,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             alt="Kostraktor"
             width={40}
             height={40}
-            className="rounded-lg shrink-0"
+            className="rounded-lg shrink-0 w-auto h-auto"
           />
           <div>
             <p className="text-brand-black font-heading font-bold text-sm leading-tight tracking-tight">KOSTRAKTOR</p>
