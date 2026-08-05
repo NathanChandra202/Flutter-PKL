@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../utils/app_theme.dart';
@@ -14,9 +14,10 @@ class MainNavigation extends StatefulWidget {
 
   @override
   State<MainNavigation> createState() => _MainNavigationState();
-} 
+}
 
-class _MainNavigationState extends State<MainNavigation> {
+class _MainNavigationState extends State<MainNavigation>
+    with WidgetsBindingObserver {
   int _currentIndex = 0;
 
   final List<Widget> _allScreens = [
@@ -25,6 +26,34 @@ class _MainNavigationState extends State<MainNavigation> {
     const LaporScreen(),
     const ProfileScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshStatus());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshStatus();
+    }
+  }
+
+  Future<void> _refreshStatus() async {
+    if (!mounted) return;
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (auth.isLoggedIn) {
+      await auth.refreshUserStatus();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

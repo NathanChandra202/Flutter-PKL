@@ -1,4 +1,4 @@
-import 'dart:math';
+﻿import 'dart:math';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -214,66 +214,70 @@ class AuthProvider extends ChangeNotifier {
   // ─── Auth Actions ──────────────────────────────────────────────────────────
 
   Future<bool> tryAutoLogin() async {
-    final savedToken = await _storage.read(key: 'access_token');
-    if (savedToken == null) return false;
-    _accessToken = savedToken;
+    debugPrint('[AutoLogin] Starting...');
+
+    String? savedToken;
     try {
-      final profileResponse = await http.get(
-        Uri.parse('$_baseUrl/auth/me'),
-        headers: {'Authorization': 'Bearer $_accessToken'},
-      );
+      savedToken = await _storage.read(key: 'access_token');
+    } catch (e) {
+      debugPrint('[AutoLogin] Failed to read secure storage: $e');
+      return false;
+    }
+
+    if (savedToken == null || savedToken.isEmpty) {
+      debugPrint('[AutoLogin] No saved token found');
+      return false;
+    }
+
+    debugPrint('[AutoLogin] Token found, verifying with backend...');
+    _accessToken = savedToken;
+
+    try {
+      final profileResponse = await http
+          .get(
+            Uri.parse('$_baseUrl/auth/me'),
+            headers: {'Authorization': 'Bearer $_accessToken'},
+          )
+          .timeout(const Duration(seconds: 15));
+
+      debugPrint('[AutoLogin] Status: ${profileResponse.statusCode}');
+
       if (profileResponse.statusCode == 200) {
         final profile = json.decode(profileResponse.body);
         _userEmail = profile['email'];
         _userName = profile['nama_lengkap'];
 
-        // Determine role based on backend data, NOT local cache
         if (profile['current_room_id'] != null) {
           _currentRole = UserRole.resident;
           _assignedRoom =
               profile['current_room_name'] ??
               'Kamar ${profile['current_room_id']}';
+          debugPrint('[AutoLogin] Role=RESIDENT room=$_assignedRoom');
         } else {
-          final userRole = profile['role'] ?? 'Customer';
-          _currentRole = _parseRole(userRole);
-
-          // Check if user has pending booking
-          final pending = _pendingApprovals
-              .where((p) => p.email == _userEmail)
-              .firstOrNull;
-          if (pending != null) {
-            _bookingData = pending.bookingData;
-            _currentRole = UserRole.pendingResident;
-          }
-        }
-
-        // Update local cache to match backend state
-        _registeredUsers[_userEmail!] = {
-          'password': '',
-          'name': _userName ?? '',
-          'phone': '',
-          'role': _currentRole == UserRole.admin
-              ? 'admin'
-              : _currentRole == UserRole.resident
-              ? 'resident'
-              : _currentRole == UserRole.pendingResident
-              ? 'pendingResident'
-              : 'calon',
-        };
-
-        if (_assignedRoom != null) {
-          _registeredUsers[_userEmail!]?['room'] = _assignedRoom!;
+          _currentRole = _parseRole(profile['role'] ?? 'Customer');
+          debugPrint('[AutoLogin] Role=$_currentRole');
         }
 
         notifyListeners();
+        debugPrint('[AutoLogin] SUCCESS');
         return true;
+
+      } else if (profileResponse.statusCode == 401) {
+        debugPrint('[AutoLogin] Token expired (401), clearing');
+        _accessToken = null;
+        await _storage.delete(key: 'access_token');
+        return false;
+
+      } else {
+        debugPrint('[AutoLogin] Server error ${profileResponse.statusCode}, keeping token');
+        _accessToken = null;
+        return false;
       }
     } catch (e) {
-      debugPrint('Auto-login failed: $e');
+      debugPrint('[AutoLogin] Network/timeout error: $e - keeping token, not logging out');
+      _accessToken = null;
+      return false;
     }
-    _accessToken = null;
-    await _storage.delete(key: 'access_token');
-    return false;
   }
 
   /// Returns null on success, error message on failure
@@ -326,14 +330,16 @@ class AuthProvider extends ChangeNotifier {
                 : 'calon',
           };
 
-          // --- RESTORE BOOKING DATA ---
-          final pending = _pendingApprovals
-              .where((p) => p.email == _userEmail)
-              .firstOrNull;
-          if (pending != null) {
-            _bookingData = pending.bookingData;
-            _currentRole = UserRole.pendingResident;
-            _registeredUsers[_userEmail!]?['role'] = 'pendingResident';
+          // Only restore pending booking if backend confirms user is NOT yet a resident.
+          // If current_room_id is set, backend already approved them - trust backend.
+          if (_currentRole != UserRole.resident && _currentRole != UserRole.admin) {
+            final pending = _pendingApprovals
+                .where((p) => p.email == _userEmail)
+                .firstOrNull;
+            if (pending != null) {
+              _bookingData = pending.bookingData;
+              _currentRole = UserRole.pendingResident;
+            }
           }
 
           notifyListeners();
@@ -451,14 +457,16 @@ class AuthProvider extends ChangeNotifier {
                 : 'calon',
           };
 
-          // --- RESTORE BOOKING DATA ---
-          final pending = _pendingApprovals
-              .where((p) => p.email == _userEmail)
-              .firstOrNull;
-          if (pending != null) {
-            _bookingData = pending.bookingData;
-            _currentRole = UserRole.pendingResident;
-            _registeredUsers[_userEmail!]?['role'] = 'pendingResident';
+
+          // Only restore pending booking if backend confirms user is NOT yet a resident.
+          if (_currentRole != UserRole.resident && _currentRole != UserRole.admin) {
+            final pending = _pendingApprovals
+                .where((p) => p.email == _userEmail)
+                .firstOrNull;
+            if (pending != null) {
+              _bookingData = pending.bookingData;
+              _currentRole = UserRole.pendingResident;
+            }
           }
 
           notifyListeners();
@@ -1367,6 +1375,64 @@ class AuthProvider extends ChangeNotifier {
       print('Error uploading report photo: $e');
     }
     return null;
+  }
+
+
+  /// Refresh status user dari backend tanpa logout.
+  /// Dipanggil saat app resume dari background, atau setelah booking diapprove.
+  Future<bool> refreshUserStatus() async {
+    debugPrint('[RefreshStatus] Starting...');
+
+    if (_accessToken == null) {
+      debugPrint('[RefreshStatus] No access token, skipping');
+      return false;
+    }
+
+    try {
+      final profileResponse = await http
+          .get(
+            Uri.parse('$_baseUrl/auth/me'),
+            headers: {'Authorization': 'Bearer $_accessToken'},
+          )
+          .timeout(const Duration(seconds: 10));
+
+      debugPrint('[RefreshStatus] Status: ${profileResponse.statusCode}');
+
+      if (profileResponse.statusCode == 200) {
+        final profile = json.decode(profileResponse.body);
+        final oldRole = _currentRole;
+
+        if (profile['current_room_id'] != null) {
+          _currentRole = UserRole.resident;
+          _assignedRoom =
+              profile['current_room_name'] ??
+              'Kamar ${profile['current_room_id']}';
+          debugPrint('[RefreshStatus] Role=RESIDENT room=$_assignedRoom');
+        } else {
+          _currentRole = _parseRole(profile['role'] ?? 'Customer');
+          debugPrint('[RefreshStatus] Role=$_currentRole');
+        }
+
+        if (oldRole != _currentRole) {
+          debugPrint('[RefreshStatus] Role changed $oldRole -> $_currentRole, notifying');
+          notifyListeners();
+        }
+
+        return true;
+      } else if (profileResponse.statusCode == 401) {
+        // Token expired — clear and let user re-login
+        debugPrint('[RefreshStatus] Token expired, clearing');
+        _accessToken = null;
+        await _storage.delete(key: 'access_token');
+        _currentRole = UserRole.guest;
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      debugPrint('[RefreshStatus] Network error: $e — keeping current state');
+    }
+
+    return false;
   }
 
   UserRole _parseRole(String role) {
