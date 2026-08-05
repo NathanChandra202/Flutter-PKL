@@ -19,5 +19,5 @@ class KostRoom(Base):
     owner_id = Column(Integer, ForeignKey("users.id"))
     
     # Relationships
-    owner = relationship("User")
+    owner = relationship("User", foreign_keys=[owner_id])
     bookings = relationship("Booking", back_populates="room")
