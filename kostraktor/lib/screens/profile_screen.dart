@@ -424,12 +424,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                           ),
-                          onPressed: () {
+                          onPressed: () async {
                             Navigator.pop(ctx);
-                            Provider.of<AuthProvider>(
+                            await Provider.of<AuthProvider>(
                               context,
                               listen: false,
                             ).logout();
+                            if (!context.mounted) return;
                             Navigator.pushAndRemoveUntil(
                               context,
                               MaterialPageRoute(

@@ -39,6 +39,7 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
 
     final auth = Provider.of<AuthProvider>(context, listen: false);
+    await auth.tryAutoLogin();
 
     Widget destination;
     if (!auth.isLoggedIn) {

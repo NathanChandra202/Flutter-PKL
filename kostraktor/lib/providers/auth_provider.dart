@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../config/app_env.dart';
 
@@ -121,6 +122,7 @@ class PendingUser {
 }
 
 class AuthProvider extends ChangeNotifier {
+  final _storage = const FlutterSecureStorage();
   UserRole _currentRole = UserRole.guest;
   String? _userEmail;
   String? _userName;
@@ -211,6 +213,69 @@ class AuthProvider extends ChangeNotifier {
 
   // ─── Auth Actions ──────────────────────────────────────────────────────────
 
+  Future<bool> tryAutoLogin() async {
+    final savedToken = await _storage.read(key: 'access_token');
+    if (savedToken == null) return false;
+    _accessToken = savedToken;
+    try {
+      final profileResponse = await http.get(
+        Uri.parse('$_baseUrl/auth/me'),
+        headers: {'Authorization': 'Bearer $_accessToken'},
+      );
+      if (profileResponse.statusCode == 200) {
+        final profile = json.decode(profileResponse.body);
+        _userEmail = profile['email'];
+        _userName = profile['nama_lengkap'];
+
+        // Determine role based on backend data, NOT local cache
+        if (profile['current_room_id'] != null) {
+          _currentRole = UserRole.resident;
+          _assignedRoom =
+              profile['current_room_name'] ??
+              'Kamar ${profile['current_room_id']}';
+        } else {
+          final userRole = profile['role'] ?? 'Customer';
+          _currentRole = _parseRole(userRole);
+
+          // Check if user has pending booking
+          final pending = _pendingApprovals
+              .where((p) => p.email == _userEmail)
+              .firstOrNull;
+          if (pending != null) {
+            _bookingData = pending.bookingData;
+            _currentRole = UserRole.pendingResident;
+          }
+        }
+
+        // Update local cache to match backend state
+        _registeredUsers[_userEmail!] = {
+          'password': '',
+          'name': _userName ?? '',
+          'phone': '',
+          'role': _currentRole == UserRole.admin
+              ? 'admin'
+              : _currentRole == UserRole.resident
+              ? 'resident'
+              : _currentRole == UserRole.pendingResident
+              ? 'pendingResident'
+              : 'calon',
+        };
+
+        if (_assignedRoom != null) {
+          _registeredUsers[_userEmail!]?['room'] = _assignedRoom!;
+        }
+
+        notifyListeners();
+        return true;
+      }
+    } catch (e) {
+      debugPrint('Auto-login failed: $e');
+    }
+    _accessToken = null;
+    await _storage.delete(key: 'access_token');
+    return false;
+  }
+
   /// Returns null on success, error message on failure
   Future<String?> login(String email, String password) async {
     final trimmedEmail = email.trim().toLowerCase();
@@ -226,6 +291,9 @@ class AuthProvider extends ChangeNotifier {
         final data = json.decode(response.body);
         _accessToken = data['access_token'];
 
+        // Save token to secure storage
+        await _storage.write(key: 'access_token', value: _accessToken);
+
         // Fetch user profile
         final profileResponse = await http.get(
           Uri.parse('$_baseUrl/auth/me'),
@@ -236,25 +304,27 @@ class AuthProvider extends ChangeNotifier {
           final profile = json.decode(profileResponse.body);
           _userEmail = profile['email'];
           _userName = profile['nama_lengkap'];
-          _currentRole = _parseRole(profile['role'] ?? 'Customer');
 
-          // --- LOCAL OVERRIDE ---
-          // Since the backend doesn't fully support room assignment yet,
-          // apply the local upgrade if they were approved by the admin locally.
-          if (_registeredUsers.containsKey(_userEmail)) {
-            final localRole = _registeredUsers[_userEmail!]?['role'];
-            if (localRole != null && localRole != 'calon') {
-              _currentRole = _parseRole(localRole);
-            }
-            _assignedRoom = _registeredUsers[_userEmail!]?['room'] as String?;
+          // Determine role based on backend data
+          if (profile['current_room_id'] != null) {
+            _currentRole = UserRole.resident;
+            _assignedRoom =
+                profile['current_room_name'] ??
+                'Kamar ${profile['current_room_id']}';
           } else {
-            // Ensure they exist in local cache
-            _registeredUsers[_userEmail!] = {
-              'password': password,
-              'nama': _userName ?? '',
-              'role': _currentRole == UserRole.admin ? 'admin' : 'calon',
-            };
+            _currentRole = _parseRole(profile['role'] ?? 'Customer');
           }
+
+          // Update local cache
+          _registeredUsers[_userEmail!] = {
+            'password': password,
+            'nama': _userName ?? '',
+            'role': _currentRole == UserRole.admin
+                ? 'admin'
+                : _currentRole == UserRole.resident
+                ? 'resident'
+                : 'calon',
+          };
 
           // --- RESTORE BOOKING DATA ---
           final pending = _pendingApprovals
@@ -346,6 +416,9 @@ class AuthProvider extends ChangeNotifier {
         final data = json.decode(response.body);
         _accessToken = data['access_token'];
 
+        // Save token to secure storage
+        await _storage.write(key: 'access_token', value: _accessToken);
+
         // Fetch user profile
         final profileResponse = await http.get(
           Uri.parse('$_baseUrl/auth/me'),
@@ -356,23 +429,27 @@ class AuthProvider extends ChangeNotifier {
           final profile = json.decode(profileResponse.body);
           _userEmail = profile['email'];
           _userName = profile['nama_lengkap'];
-          _currentRole = _parseRole(profile['role'] ?? 'Customer');
 
-          // --- LOCAL OVERRIDE ---
-          if (_registeredUsers.containsKey(_userEmail)) {
-            final localRole = _registeredUsers[_userEmail!]?['role'];
-            if (localRole != null && localRole != 'calon') {
-              _currentRole = _parseRole(localRole);
-            }
-            _assignedRoom = _registeredUsers[_userEmail!]?['room'] as String?;
+          // Determine role based on backend data
+          if (profile['current_room_id'] != null) {
+            _currentRole = UserRole.resident;
+            _assignedRoom =
+                profile['current_room_name'] ??
+                'Kamar ${profile['current_room_id']}';
           } else {
-            // Ensure they exist in local cache
-            _registeredUsers[_userEmail!] = {
-              'password': '',
-              'nama': _userName ?? '',
-              'role': _currentRole == UserRole.admin ? 'admin' : 'calon',
-            };
+            _currentRole = _parseRole(profile['role'] ?? 'Customer');
           }
+
+          // Update local cache
+          _registeredUsers[_userEmail!] = {
+            'password': '',
+            'nama': _userName ?? '',
+            'role': _currentRole == UserRole.admin
+                ? 'admin'
+                : _currentRole == UserRole.resident
+                ? 'resident'
+                : 'calon',
+          };
 
           // --- RESTORE BOOKING DATA ---
           final pending = _pendingApprovals
@@ -439,7 +516,8 @@ class AuthProvider extends ChangeNotifier {
 
   /// Called after booking form is submitted — upgrades status to pendingResident
   Future<String?> submitBooking(BookingData data) async {
-    if (_accessToken == null) return 'Sesi telah berakhir, silakan login kembali.';
+    if (_accessToken == null)
+      return 'Sesi telah berakhir, silakan login kembali.';
 
     int? bookingId;
     try {
@@ -465,7 +543,7 @@ class AuthProvider extends ChangeNotifier {
           return 'Gagal menyimpan data booking ke server (Status ${response.statusCode}).';
         }
       }
-      
+
       final responseData = json.decode(response.body);
       bookingId = responseData['id'];
     } catch (e) {
@@ -473,7 +551,10 @@ class AuthProvider extends ChangeNotifier {
       return 'Terjadi kesalahan jaringan. Gagal menyimpan booking.';
     }
 
-    if (bookingId != null && (data.ktpBytes != null || data.selfieBytes != null || data.buktiBayarBytes != null)) {
+    if (bookingId != null &&
+        (data.ktpBytes != null ||
+            data.selfieBytes != null ||
+            data.buktiBayarBytes != null)) {
       try {
         final request = http.MultipartRequest(
           'POST',
@@ -482,13 +563,31 @@ class AuthProvider extends ChangeNotifier {
         request.headers['Authorization'] = 'Bearer $_accessToken';
 
         if (data.ktpBytes != null) {
-          request.files.add(http.MultipartFile.fromBytes('ktp_image', data.ktpBytes!, filename: 'ktp.jpg'));
+          request.files.add(
+            http.MultipartFile.fromBytes(
+              'ktp_image',
+              data.ktpBytes!,
+              filename: 'ktp.jpg',
+            ),
+          );
         }
         if (data.selfieBytes != null) {
-          request.files.add(http.MultipartFile.fromBytes('selfie_image', data.selfieBytes!, filename: 'selfie.jpg'));
+          request.files.add(
+            http.MultipartFile.fromBytes(
+              'selfie_image',
+              data.selfieBytes!,
+              filename: 'selfie.jpg',
+            ),
+          );
         }
         if (data.buktiBayarBytes != null) {
-          request.files.add(http.MultipartFile.fromBytes('bukti_bayar', data.buktiBayarBytes!, filename: 'bukti.jpg'));
+          request.files.add(
+            http.MultipartFile.fromBytes(
+              'bukti_bayar',
+              data.buktiBayarBytes!,
+              filename: 'bukti.jpg',
+            ),
+          );
         }
 
         final streamedResponse = await request.send();
@@ -537,7 +636,8 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<String?> updateBookingStatus(int bookingId, String status) async {
-    if (_accessToken == null) return 'Sesi telah berakhir, silakan login kembali.';
+    if (_accessToken == null)
+      return 'Sesi telah berakhir, silakan login kembali.';
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/bookings/$bookingId/status'),
@@ -552,7 +652,8 @@ class AuthProvider extends ChangeNotifier {
       } else {
         try {
           final errData = json.decode(response.body);
-          return errData['detail'] ?? 'Gagal mengupdate status (Status ${response.statusCode}).';
+          return errData['detail'] ??
+              'Gagal mengupdate status (Status ${response.statusCode}).';
         } catch (_) {
           return 'Gagal mengupdate status (Status ${response.statusCode}).';
         }
@@ -584,7 +685,8 @@ class AuthProvider extends ChangeNotifier {
     required String price,
     required String waNumber,
   }) async {
-    if (_accessToken == null) throw Exception('Sesi telah berakhir, silakan login kembali.');
+    if (_accessToken == null)
+      throw Exception('Sesi telah berakhir, silakan login kembali.');
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/jastip/'),
@@ -604,9 +706,14 @@ class AuthProvider extends ChangeNotifier {
       } else {
         try {
           final errData = json.decode(response.body);
-          throw Exception(errData['detail'] ?? 'Gagal membuat jastip (Status ${response.statusCode}).');
+          throw Exception(
+            errData['detail'] ??
+                'Gagal membuat jastip (Status ${response.statusCode}).',
+          );
         } catch (_) {
-          throw Exception('Gagal membuat jastip (Status ${response.statusCode}).');
+          throw Exception(
+            'Gagal membuat jastip (Status ${response.statusCode}).',
+          );
         }
       }
     } catch (e) {
@@ -617,7 +724,8 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<String?> deleteJastipListing(int listingId) async {
-    if (_accessToken == null) return 'Sesi telah berakhir, silakan login kembali.';
+    if (_accessToken == null)
+      return 'Sesi telah berakhir, silakan login kembali.';
     try {
       final response = await http.delete(
         Uri.parse('$_baseUrl/jastip/$listingId'),
@@ -628,7 +736,8 @@ class AuthProvider extends ChangeNotifier {
       } else {
         try {
           final errData = json.decode(response.body);
-          return errData['detail'] ?? 'Gagal menghapus jastip (Status ${response.statusCode}).';
+          return errData['detail'] ??
+              'Gagal menghapus jastip (Status ${response.statusCode}).';
         } catch (_) {
           return 'Gagal menghapus jastip (Status ${response.statusCode}).';
         }
@@ -664,7 +773,8 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<Map<String, dynamic>?> createRoom(Map<String, dynamic> data) async {
-    if (_accessToken == null) throw Exception('Sesi telah berakhir, silakan login kembali.');
+    if (_accessToken == null)
+      throw Exception('Sesi telah berakhir, silakan login kembali.');
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/rooms/'),
@@ -679,9 +789,14 @@ class AuthProvider extends ChangeNotifier {
       } else {
         try {
           final errData = json.decode(response.body);
-          throw Exception(errData['detail'] ?? 'Gagal membuat kamar (Status ${response.statusCode}).');
+          throw Exception(
+            errData['detail'] ??
+                'Gagal membuat kamar (Status ${response.statusCode}).',
+          );
         } catch (_) {
-          throw Exception('Gagal membuat kamar (Status ${response.statusCode}).');
+          throw Exception(
+            'Gagal membuat kamar (Status ${response.statusCode}).',
+          );
         }
       }
     } catch (e) {
@@ -796,7 +911,8 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<Map<String, dynamic>?> submitTool(String name, String iconName) async {
-    if (_accessToken == null) throw Exception('Sesi telah berakhir, silakan login kembali.');
+    if (_accessToken == null)
+      throw Exception('Sesi telah berakhir, silakan login kembali.');
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/tools/'),
@@ -804,19 +920,21 @@ class AuthProvider extends ChangeNotifier {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $_accessToken',
         },
-        body: json.encode({
-          'name': name,
-          'icon_name': iconName,
-        }),
+        body: json.encode({'name': name, 'icon_name': iconName}),
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
         return json.decode(response.body);
       } else {
         try {
           final errData = json.decode(response.body);
-          throw Exception(errData['detail'] ?? 'Gagal menambah alat (Status ${response.statusCode}).');
+          throw Exception(
+            errData['detail'] ??
+                'Gagal menambah alat (Status ${response.statusCode}).',
+          );
         } catch (_) {
-          throw Exception('Gagal menambah alat (Status ${response.statusCode}).');
+          throw Exception(
+            'Gagal menambah alat (Status ${response.statusCode}).',
+          );
         }
       }
     } catch (e) {
@@ -938,6 +1056,10 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// Called by admin to approve a pending user — upgrades them to full resident
+  /// NOTE: This method is now deprecated in favor of backend booking approval system.
+  /// Use updateBookingStatus() API call instead, which properly handles room availability
+  /// and user resident status through the backend.
+  @deprecated
   void adminApproveUser(String email, String roomNumber) {
     final userEntry = _registeredUsers[email];
     if (userEntry == null) return;
@@ -950,16 +1072,17 @@ class AuthProvider extends ChangeNotifier {
       releaseUniquePaymentCode(pending.bookingData.uniquePaymentCode);
     }
 
-    userEntry['role'] = 'resident';
-    userEntry['room'] = roomNumber;
-
-    // Remove from pending queue
+    // Remove from pending queue - but DO NOT modify user status locally
+    // The backend approval system handles user status through current_room_id
     _pendingApprovals.removeWhere((p) => p.email == email);
 
-    // If the current logged-in user is the one being approved, upgrade in-session too
+    // If the current logged-in user is being approved, they should login again
+    // to get updated status from backend via tryAutoLogin()
     if (_userEmail == email) {
-      _currentRole = UserRole.resident;
-      _assignedRoom = roomNumber;
+      // Force refresh from backend on next app start
+      debugPrint(
+        'Current user approved, status will be updated from backend on next login',
+      );
     }
 
     notifyListeners();
@@ -1009,13 +1132,15 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void logout() {
+  Future<void> logout() async {
     _currentRole = UserRole.guest;
     _userEmail = null;
     _userName = null;
     _userPhone = null;
     _bookingData = null;
     _assignedRoom = null;
+    _accessToken = null;
+    await _storage.delete(key: 'access_token');
     notifyListeners();
   }
 
@@ -1027,14 +1152,18 @@ class AuthProvider extends ChangeNotifier {
         final List<dynamic> data = json.decode(response.body);
         _reviews
           ..clear()
-          ..addAll(data.map((r) => Review(
+          ..addAll(
+            data.map(
+              (r) => Review(
                 userName: r['user_name'] ?? 'Anonymous',
                 userEmail: r['user_email'] ?? '',
                 rating: (r['rating'] as num).toDouble(),
                 comment: r['comment'] ?? '',
                 createdAt: DateTime.parse(r['created_at']),
                 roomType: r['room_type'],
-              )));
+              ),
+            ),
+          );
         notifyListeners();
       }
     } catch (e) {
@@ -1061,8 +1190,7 @@ class AuthProvider extends ChangeNotifier {
     }
 
     // Optimistic duplicate check using cached data (backend enforces it too)
-    final alreadyReviewed =
-        _reviews.any((r) => r.userEmail == _userEmail);
+    final alreadyReviewed = _reviews.any((r) => r.userEmail == _userEmail);
     if (alreadyReviewed) {
       return 'Anda sudah memberikan review sebelumnya.';
     }
@@ -1178,7 +1306,8 @@ class AuthProvider extends ChangeNotifier {
     required String description,
     String? category,
   }) async {
-    if (_accessToken == null) throw Exception('Sesi telah berakhir, silakan login kembali.');
+    if (_accessToken == null)
+      throw Exception('Sesi telah berakhir, silakan login kembali.');
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/reports/'),
@@ -1199,7 +1328,9 @@ class AuthProvider extends ChangeNotifier {
           final errData = json.decode(response.body);
           throw Exception(errData['detail'] ?? 'Gagal membuat laporan.');
         } catch (_) {
-          throw Exception('Gagal membuat laporan (Status ${response.statusCode}).');
+          throw Exception(
+            'Gagal membuat laporan (Status ${response.statusCode}).',
+          );
         }
       }
     } catch (e) {
@@ -1217,7 +1348,13 @@ class AuthProvider extends ChangeNotifier {
         Uri.parse('$_baseUrl/reports/$reportId/upload-photo'),
       );
       request.headers['Authorization'] = 'Bearer $_accessToken';
-      request.files.add(http.MultipartFile.fromBytes('photo', photoBytes, filename: 'report_$reportId.jpg'));
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'photo',
+          photoBytes,
+          filename: 'report_$reportId.jpg',
+        ),
+      );
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);

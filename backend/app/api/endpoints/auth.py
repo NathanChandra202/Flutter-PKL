@@ -134,5 +134,7 @@ def read_users_me(current_user: User = Depends(deps.get_current_active_user)):
         "email": current_user.email,
         "role": current_user.role.name if current_user.role else None,
         "nama_lengkap": current_user.profile.nama_lengkap if current_user.profile else None,
-        "is_face_verified": current_user.profile.is_face_verified if current_user.profile else False
+        "is_face_verified": current_user.profile.is_face_verified if current_user.profile else False,
+        "current_room_id": current_user.current_room_id,
+        "current_room_name": current_user.current_room.name if current_user.current_room else None,
     }

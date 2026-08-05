@@ -53,7 +53,6 @@ function RoomFormDialog({ initial, onSave, onClose }: RoomFormProps) {
       setSaving(false);
     }
   }
-
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-brand-surface border border-gray-200 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
@@ -115,7 +114,6 @@ function RoomFormDialog({ initial, onSave, onClose }: RoomFormProps) {
               className="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-2.5 text-brand-black text-sm focus:outline-none focus:ring-2 focus:ring-brand-black/20"
             />
           </div>
-
           <div className="flex items-center gap-3">
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -174,7 +172,6 @@ function RoomFormDialog({ initial, onSave, onClose }: RoomFormProps) {
     </div>
   );
 }
-
 // ─── Image Gallery Dialog ────────────────────────────────────────────────────────
 
 function ImageGalleryDialog({
@@ -212,7 +209,7 @@ function ImageGalleryDialog({
                   />
                   <button
                     onClick={() => onDelete(url)}
-                    className="absolute inset-0 bg-red-600/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-brand-black text-xs font-medium"
+                    className="absolute inset-0 bg-red-600/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-medium"
                   >
                     🗑 Hapus
                   </button>
@@ -228,7 +225,124 @@ function ImageGalleryDialog({
     </div>
   );
 }
+// ─── Room Detail Dialog ──────────────────────────────────────────────────────────
 
+interface TenantInfo {
+  user_id: number | null;
+  name: string;
+  email: string;
+  start_date: string | null;
+  booking_id: number;
+}
+
+function RoomDetailDialog({ room, onClose }: { room: Room; onClose: () => void }) {
+  const images = parseImages(room);
+  const [tenant, setTenant] = useState<TenantInfo | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (!room.is_available) {
+      fetch(`/api/proxy?path=${encodeURIComponent(`/rooms/${room.id}/tenant`)}`)
+        .then((r) => r.json())
+        .then((data) => setTenant(data.tenant ?? null))
+        .catch(() => setTenant(null));
+    } else {
+      setTenant(null);
+    }
+  }, [room]);
+
+  const facilities = room.facilities ? room.facilities.split(",").map((f) => f.trim()).filter(Boolean) : [];
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-brand-surface border border-gray-200 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
+          <h2 className="text-brand-black font-semibold">Detail Kamar</h2>
+          <button onClick={onClose} className="text-brand-muted hover:text-brand-black text-lg">✕</button>
+        </div>
+
+        <div className="overflow-y-auto p-6 space-y-6">
+          {images.length > 0 && (
+            <div className="grid grid-cols-3 gap-2">
+              {images.map((url, i) => (
+                <div key={i} className="relative aspect-video rounded-xl overflow-hidden bg-gray-100">
+                  <Image src={resolveMediaUrl(url)} alt={`img ${i + 1}`} fill className="object-cover" sizes="200px" unoptimized />
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="space-y-3">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-bold text-brand-black">{room.name}</h3>
+                {room.room_type && <p className="text-brand-muted text-sm mt-0.5">{room.room_type}</p>}
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-brand-black font-bold text-lg">{formatRupiah(room.price_per_month)}</p>
+                <p className="text-brand-muted text-xs">per bulan</p>
+              </div>
+            </div>
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${room.is_available ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-gray-100 text-gray-500 border border-gray-300"}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${room.is_available ? "bg-emerald-500" : "bg-gray-400"}`} />
+              {room.is_available ? "Tersedia" : "Terisi"}
+            </span>
+
+            {room.description && (
+              <p className="text-brand-black text-sm leading-relaxed">{room.description}</p>
+            )}
+
+            {facilities.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-brand-muted uppercase tracking-wide mb-2">Fasilitas</p>
+                <div className="flex flex-wrap gap-2">
+                  {facilities.map((f) => (
+                    <span key={f} className="px-3 py-1 bg-gray-100 text-brand-black text-xs rounded-full border border-gray-200">{f}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {!room.is_available && (
+            <div className="border border-gray-200 rounded-xl p-4 bg-amber-50/50">
+              <p className="text-xs font-semibold text-brand-muted uppercase tracking-wide mb-3">👤 Info Penyewa Aktif</p>
+              {tenant === undefined ? (
+                <p className="text-brand-muted text-sm">Memuat info penyewa...</p>
+              ) : tenant === null ? (
+                <p className="text-brand-muted text-sm italic">Data penyewa tidak ditemukan</p>
+              ) : (
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-brand-muted text-xs w-24">Nama</span>
+                    <span className="text-brand-black text-sm font-medium">{tenant.name}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-brand-muted text-xs w-24">Email</span>
+                    <span className="text-brand-black text-sm">{tenant.email}</span>
+                  </div>
+                  {tenant.start_date && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-brand-muted text-xs w-24">Mulai Sewa</span>
+                      <span className="text-brand-black text-sm">
+                        {new Date(tenant.start_date).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="px-6 py-4 border-t border-gray-200 text-right shrink-0">
+          <button onClick={onClose} className="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-brand-black rounded-xl text-sm font-medium transition-colors">
+            Tutup
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 // ─── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function RoomsPage() {
@@ -237,6 +351,7 @@ export default function RoomsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editRoom, setEditRoom] = useState<Room | undefined>();
   const [galleryRoom, setGalleryRoom] = useState<Room | undefined>();
+  const [detailRoom, setDetailRoom] = useState<Room | undefined>();
   const [confirmDelete, setConfirmDelete] = useState<Room | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
@@ -271,13 +386,11 @@ export default function RoomsPage() {
 
   async function handleSave(data: Partial<Room>, files?: FileList) {
     if (editRoom) {
-      // Update existing room
       await apiWithToken<Room>(`/rooms/${editRoom.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      // Upload new images if selected
       if (files && files.length > 0) {
         const form = new FormData();
         Array.from(files).forEach((f) => form.append("files", f));
@@ -285,7 +398,6 @@ export default function RoomsPage() {
       }
       showToast("Kamar berhasil diupdate!");
     } else {
-      // Create new room first, then upload images
       const newRoom = await apiWithToken<Room>("/rooms/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -302,7 +414,6 @@ export default function RoomsPage() {
     setEditRoom(undefined);
     await loadRooms();
   }
-
   async function handleDelete(room: Room) {
     try {
       await apiWithToken(`/rooms/${room.id}`, { method: "DELETE" });
@@ -319,7 +430,6 @@ export default function RoomsPage() {
       await apiWithToken(`/rooms/${room.id}/images?image_url=${encodeURIComponent(imageUrl)}`, { method: "DELETE" });
       showToast("Gambar berhasil dihapus");
       await loadRooms();
-      // Refresh gallery
       setGalleryRoom((prev) => prev ? rooms.find((r) => r.id === prev.id) : undefined);
     } catch (e: unknown) {
       showToast(e instanceof Error ? e.message : "Gagal hapus gambar", false);
@@ -328,14 +438,12 @@ export default function RoomsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Toast */}
       {toast && (
-        <div className={`fixed top-6 right-6 z-[100] px-5 py-3 rounded-xl shadow-lg text-sm font-medium transition-all ${toast.ok ? "bg-emerald-500 text-brand-black" : "bg-red-600 text-brand-black"}`}>
+        <div className={`fixed top-6 right-6 z-100 px-5 py-3 rounded-xl shadow-lg text-sm font-medium transition-all ${toast.ok ? "bg-emerald-500 text-white" : "bg-red-600 text-white"}`}>
           {toast.msg}
         </div>
       )}
 
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-brand-black">Kelola Kamar</h1>
@@ -349,7 +457,6 @@ export default function RoomsPage() {
         </button>
       </div>
 
-      {/* Table */}
       <div className="bg-brand-surface border border-gray-200 rounded-2xl overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-20 text-brand-muted">Memuat data...</div>
@@ -379,7 +486,7 @@ export default function RoomsPage() {
                             <span className="flex items-center justify-center h-full text-gray-400 text-xs">No img</span>
                           )}
                           {imgs.length > 1 && (
-                            <span className="absolute bottom-0.5 right-0.5 bg-black/50 text-brand-black text-[10px] rounded px-1">+{imgs.length - 1}</span>
+                            <span className="absolute bottom-0.5 right-0.5 bg-black/50 text-white text-[10px] rounded px-1">+{imgs.length - 1}</span>
                           )}
                         </button>
                       </td>
@@ -395,6 +502,14 @@ export default function RoomsPage() {
                       <td className="px-5 py-3 text-brand-muted max-w-xs truncate">{room.facilities ?? "—"}</td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-2">
+                          <button
+                            id={`detail-room-${room.id}`}
+                            onClick={() => setDetailRoom(room)}
+                            title="Lihat detail"
+                            className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-medium transition-colors border border-blue-200"
+                          >
+                            👁 Detail
+                          </button>
                           <button
                             onClick={() => { setEditRoom(room); setShowForm(true); }}
                             className="px-3 py-1.5 bg-gray-50 hover:bg-gray-200 text-brand-black rounded-lg text-xs font-medium transition-colors"
@@ -417,8 +532,6 @@ export default function RoomsPage() {
           </div>
         )}
       </div>
-
-      {/* Modals */}
       {showForm && (
         <RoomFormDialog
           initial={editRoom}
@@ -435,6 +548,13 @@ export default function RoomsPage() {
         />
       )}
 
+      {detailRoom && (
+        <RoomDetailDialog
+          room={detailRoom}
+          onClose={() => setDetailRoom(undefined)}
+        />
+      )}
+
       {confirmDelete && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-brand-surface border border-gray-200 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
@@ -442,7 +562,7 @@ export default function RoomsPage() {
             <p className="text-brand-muted text-sm mb-6">Kamar <span className="text-brand-black font-medium">"{confirmDelete.name}"</span> akan dinonaktifkan (soft delete). Data tidak hilang permanen.</p>
             <div className="flex gap-3">
               <button onClick={() => setConfirmDelete(null)} className="flex-1 py-2.5 bg-gray-50 hover:bg-gray-200 text-brand-black rounded-xl text-sm">Batal</button>
-              <button onClick={() => handleDelete(confirmDelete)} className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-brand-black rounded-xl text-sm font-medium">Ya, Hapus</button>
+              <button onClick={() => handleDelete(confirmDelete)} className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-medium">Ya, Hapus</button>
             </div>
           </div>
         </div>

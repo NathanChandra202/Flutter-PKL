@@ -135,9 +135,30 @@ def update_booking_status(booking_id: int, status_update: StatusUpdate, db: Sess
     booking = db.query(Booking).filter(Booking.id == booking_id).first()
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
-        
+
+    old_status = booking.status
     booking.status = status_update.status
-    db.commit() 
+
+    # Get associated room and user
+    room = booking.room
+    booking_user = booking.user
+
+    if status_update.status == "APPROVED":
+        # Lock the room and mark user as active resident
+        if room:
+            room.is_available = False
+        if booking_user:
+            booking_user.current_room_id = booking.room_id
+
+    elif status_update.status == "REJECTED":
+        # If this was previously APPROVED, restore the room and clear user's room
+        if old_status == "APPROVED":
+            if room:
+                room.is_available = True
+            if booking_user:
+                booking_user.current_room_id = None
+
+    db.commit()
     db.refresh(booking)
     return _to_booking_response(booking)
 

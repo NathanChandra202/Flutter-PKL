@@ -153,6 +153,35 @@ def delete_room(room_id: int, db: Session = Depends(deps.get_db)):
     db.commit()
     return {"message": "Room successfully deleted (disabled)"}
 
+
+@router.get("/{room_id}/tenant")
+def get_room_tenant(room_id: int, db: Session = Depends(deps.get_db)):
+    """Return active tenant for a given room (APPROVED booking). Returns null if vacant."""
+    from app.models.booking import Booking
+    from app.models.user import User, UserProfile
+
+    booking = (
+        db.query(Booking)
+        .filter(Booking.room_id == room_id, Booking.status == "APPROVED")
+        .order_by(Booking.id.desc())
+        .first()
+    )
+    if not booking:
+        return {"tenant": None}
+
+    user = booking.user
+    profile = user.profile if user else None
+    return {
+        "tenant": {
+            "user_id": user.id if user else None,
+            "name": profile.nama_lengkap if profile and profile.nama_lengkap else (user.email if user else ""),
+            "email": user.email if user else "",
+            "start_date": booking.start_date.isoformat() if booking.start_date else None,
+            "booking_id": booking.id,
+        }
+    }
+
+
 @router.post("/seed")
 def seed_rooms(db: Session = Depends(deps.get_db)):
     existing = db.query(KostRoom).first()

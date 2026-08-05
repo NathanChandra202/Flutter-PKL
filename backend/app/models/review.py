@@ -14,6 +14,7 @@ class Review(Base):
     comment = Column(Text, nullable=False)
     room_type = Column(String, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    manual_reviewer_name = Column(String, nullable=True)
 
     # Relationships
     user = relationship("User")

@@ -16,6 +16,9 @@ class User(Base):
     role_id = Column(Integer, ForeignKey("roles.id"))
     role = relationship("Role", back_populates="users")
     
+    current_room_id = Column(Integer, ForeignKey("kost_rooms.id"), nullable=True)
+    current_room = relationship("KostRoom", foreign_keys=[current_room_id])
+    
     profile = relationship("UserProfile", back_populates="user", uselist=False)
 
 class UserProfile(Base):

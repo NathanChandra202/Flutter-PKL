@@ -238,8 +238,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                   IconButton(
                     icon: const Icon(Icons.logout, color: Colors.redAccent),
                     tooltip: 'Keluar',
-                    onPressed: () {
-                      auth.logout();
+                    onPressed: () async {
+                      await auth.logout();
+                      if (!context.mounted) return;
                       Navigator.pushAndRemoveUntil(
                         context,
                         MaterialPageRoute(builder: (_) => const LoginScreen()),
