@@ -43,14 +43,16 @@ export function formatRupiah(value: number | string | null | undefined): string 
 }
 
 /**
- * Resolve URL media dari backend — handle URL absolut, relatif, dan undefined
- * Contoh: "/media/rooms/foto.jpg" → "http://localhost:8000/media/rooms/foto.jpg"
+ * Resolve URL media dari backend — handle URL absolut, relatif, dan undefined.
+ * Menggunakan NEXT_PUBLIC_API_BASE_URL (tanpa /api/v1) sebagai origin.
+ * Contoh: "/uploads/rooms/foto.jpg" → "https://dev-api-kostraktor.duaenam.id/uploads/rooms/foto.jpg"
  */
 export function resolveMediaUrl(path: string | null | undefined): string {
   if (!path) return "";
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
-  const base =
-    process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
-    "http://localhost:8000";
-  return `${base}${path.startsWith("/") ? "" : "/"}${path}`;
+  // Strip /api/v1 suffix to get server origin
+  const origin = (
+    process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://dev-api-kostraktor.duaenam.id/api/v1"
+  ).replace(/\/api\/v1\/?$/, "");
+  return `${origin}${path.startsWith("/") ? "" : "/"}${path}`;
 }

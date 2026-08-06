@@ -101,6 +101,8 @@ async def upload_room_images(
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
 
+    print(f"[upload_room_images] Received {len(files)} files for room {room_id}")
+
     os.makedirs(ROOMS_UPLOAD_DIR, exist_ok=True)
     saved_urls: List[str] = []
 

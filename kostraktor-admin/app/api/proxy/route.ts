@@ -1,5 +1,9 @@
 /**
- * Generic API proxy route.
+ * Generic API proxy route — runs on Node.js runtime (not Edge).
+ * Node.js is required to correctly reconstruct multipart/form-data
+ * (file uploads) before forwarding to the backend. Edge runtime
+ * silently drops file content, causing "upload succeeded" but no file saved.
+ *
  * Client components can't read httpOnly cookies, so all authenticated backend
  * requests go through here: /api/proxy?path=<encoded backend path>
  *
@@ -7,7 +11,11 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 
-const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://dev-api.kostraktor.duaenam.id/api/v1";
+export const runtime = "nodejs";
+
+const BASE =
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
+  "https://dev-api-kostraktor.duaenam.id/api/v1";
 
 export async function GET(req: NextRequest) {
   return proxyRequest(req, "GET");

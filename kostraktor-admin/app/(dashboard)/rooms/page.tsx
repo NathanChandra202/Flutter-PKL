@@ -4,6 +4,23 @@ import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import type { Room } from "@/lib/api";
 import { formatRupiah, resolveMediaUrl } from "@/lib/utils";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  rectSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -172,53 +189,198 @@ function RoomFormDialog({ initial, onSave, onClose }: RoomFormProps) {
     </div>
   );
 }
-// ─── Image Gallery Dialog ────────────────────────────────────────────────────────
+// ─── Image Gallery Dialog (with drag-and-drop reorder) ──────────────────────────
+
+/** Single sortable thumbnail inside the gallery */
+function SortableImage({
+  url,
+  index,
+  onDelete,
+  isFirst,
+}: {
+  url: string;
+  index: number;
+  onDelete: (url: string) => void;
+  isFirst: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: url });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 50 : "auto",
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="relative group aspect-video bg-gray-50 rounded-xl overflow-hidden border-2 border-transparent hover:border-brand-black transition-colors"
+    >
+      {/* Drag handle — full card is draggable */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="absolute inset-0 z-10 cursor-grab active:cursor-grabbing"
+        title="Seret untuk mengubah urutan"
+      />
+
+      <Image
+        src={resolveMediaUrl(url)}
+        alt={`Room ${index + 1}`}
+        fill
+        className="object-cover pointer-events-none"
+        sizes="200px"
+        unoptimized
+      />
+
+      {/* Foto utama badge */}
+      {isFirst && (
+        <div className="absolute top-1.5 left-1.5 z-20 bg-brand-black text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-md pointer-events-none">
+          Utama
+        </div>
+      )}
+
+      {/* Delete button — sits above drag handle */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onDelete(url); }}
+        className="absolute top-1.5 right-1.5 z-20 w-7 h-7 bg-red-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs shadow"
+        title="Hapus foto"
+      >
+        🗑
+      </button>
+
+      {/* Drag indicator */}
+      <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 z-20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+        <div className="bg-black/50 text-white text-[9px] px-1.5 py-0.5 rounded-full">⠿ seret</div>
+      </div>
+    </div>
+  );
+}
 
 function ImageGalleryDialog({
   room,
   onDelete,
+  onReorder,
   onClose,
 }: {
   room: Room;
   onDelete: (url: string) => Promise<void>;
+  onReorder: (newImageUrl: string, newAdditionalImages: string) => Promise<void>;
   onClose: () => void;
 }) {
-  const images = parseImages(room);
+  const [images, setImages] = useState<string[]>(() => parseImages(room));
+  const [activeUrl, setActiveUrl] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+
+  // Keep in sync when room prop changes (e.g. after external delete)
+  useEffect(() => {
+    setImages(parseImages(room));
+  }, [room]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
+
+  function handleDragStart(event: DragStartEvent) {
+    setActiveUrl(String(event.active.id));
+  }
+
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    setActiveUrl(null);
+    if (!over || active.id === over.id) return;
+
+    const oldIdx = images.indexOf(String(active.id));
+    const newIdx = images.indexOf(String(over.id));
+    const reordered = arrayMove(images, oldIdx, newIdx);
+    setImages(reordered);
+
+    // Auto-save: first image → image_url, rest → additional_images
+    setSaving(true);
+    setSaveMsg(null);
+    try {
+      const [first, ...rest] = reordered;
+      await onReorder(first ?? "", rest.join(","));
+      setSaveMsg("✓ Urutan tersimpan");
+      setTimeout(() => setSaveMsg(null), 2000);
+    } catch {
+      setSaveMsg("⚠ Gagal menyimpan urutan");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(url: string) {
+    await onDelete(url);
+    setImages((prev) => prev.filter((u) => u !== url));
+  }
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-brand-surface border border-gray-200 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h2 className="text-brand-black font-semibold">Gambar — {room.name}</h2>
+          <div>
+            <h2 className="text-brand-black font-semibold">Gambar — {room.name}</h2>
+            {images.length > 1 && (
+              <p className="text-brand-muted text-xs mt-0.5">Seret foto untuk mengubah urutan. Foto pertama jadi foto utama.</p>
+            )}
+          </div>
           <button onClick={onClose} className="text-brand-muted hover:text-brand-black">✕</button>
         </div>
+
         <div className="p-6">
           {images.length === 0 ? (
             <p className="text-brand-muted text-center py-8">Belum ada gambar</p>
           ) : (
-            <div className="grid grid-cols-3 gap-3">
-              {images.map((url, i) => (
-                <div key={i} className="relative group aspect-video bg-gray-50 rounded-xl overflow-hidden">
-                  <Image
-                    src={resolveMediaUrl(url)}
-                    alt={`Room ${i + 1}`}
-                    fill
-                    className="object-cover"
-                    sizes="200px"
-                    unoptimized
-                  />
-                  <button
-                    onClick={() => onDelete(url)}
-                    className="absolute inset-0 bg-red-600/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-medium"
-                  >
-                    🗑 Hapus
-                  </button>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext items={images} strategy={rectSortingStrategy}>
+                <div className="grid grid-cols-3 gap-3">
+                  {images.map((url, i) => (
+                    <SortableImage
+                      key={url}
+                      url={url}
+                      index={i}
+                      isFirst={i === 0}
+                      onDelete={handleDelete}
+                    />
+                  ))}
                 </div>
-              ))}
-            </div>
+              </SortableContext>
+
+              {/* Drag overlay — shows a scaled-up preview while dragging */}
+              <DragOverlay>
+                {activeUrl && (
+                  <div className="relative aspect-video w-40 rounded-xl overflow-hidden shadow-2xl ring-2 ring-brand-black scale-105">
+                    <Image
+                      src={resolveMediaUrl(activeUrl)}
+                      alt="dragging"
+                      fill
+                      className="object-cover"
+                      sizes="160px"
+                      unoptimized
+                    />
+                  </div>
+                )}
+              </DragOverlay>
+            </DndContext>
           )}
-          <div className="mt-4 text-right">
-            <button onClick={onClose} className="px-4 py-2 bg-gray-50 hover:bg-gray-200 text-brand-black rounded-xl text-sm">Tutup</button>
+
+          <div className="mt-4 flex items-center justify-between">
+            <span className={`text-xs transition-opacity ${saveMsg ? "opacity-100" : "opacity-0"} ${saveMsg?.startsWith("⚠") ? "text-red-500" : "text-emerald-600"}`}>
+              {saving ? "Menyimpan..." : saveMsg ?? ""}
+            </span>
+            <button onClick={onClose} className="px-4 py-2 bg-gray-50 hover:bg-gray-200 text-brand-black rounded-xl text-sm">
+              Tutup
+            </button>
           </div>
         </div>
       </div>
@@ -436,6 +598,20 @@ export default function RoomsPage() {
     }
   }
 
+  async function handleReorderImages(room: Room, newImageUrl: string, newAdditionalImages: string) {
+    await apiWithToken(`/rooms/${room.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        image_url: newImageUrl || null,
+        additional_images: newAdditionalImages || null,
+      }),
+    });
+    // Refresh rooms list so thumbnail in table updates too
+    await loadRooms();
+    setGalleryRoom((prev) => prev ? rooms.find((r) => r.id === prev.id) : undefined);
+  }
+
   return (
     <div className="space-y-6">
       {toast && (
@@ -544,6 +720,9 @@ export default function RoomsPage() {
         <ImageGalleryDialog
           room={galleryRoom}
           onDelete={(url) => handleDeleteImage(galleryRoom, url)}
+          onReorder={(newImageUrl, newAdditionalImages) =>
+            handleReorderImages(galleryRoom, newImageUrl, newAdditionalImages)
+          }
           onClose={() => setGalleryRoom(undefined)}
         />
       )}
