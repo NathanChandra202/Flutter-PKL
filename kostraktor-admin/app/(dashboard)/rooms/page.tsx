@@ -203,59 +203,72 @@ function SortableImage({
   onDelete: (url: string) => void;
   isFirst: boolean;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: url });
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: url });
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.4 : 1,
-    zIndex: isDragging ? 50 : "auto",
+    opacity: isDragging ? 0.35 : 1,
   };
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="relative group aspect-video bg-gray-50 rounded-xl overflow-hidden border-2 border-transparent hover:border-brand-black transition-colors"
+      className={`relative group aspect-video bg-gray-50 rounded-xl overflow-hidden border-2 transition-colors ${
+        isDragging ? "border-brand-black shadow-lg" : "border-transparent hover:border-gray-300"
+      }`}
     >
-      {/* Drag handle — full card is draggable */}
-      <div
-        {...attributes}
-        {...listeners}
-        className="absolute inset-0 z-10 cursor-grab active:cursor-grabbing"
-        title="Seret untuk mengubah urutan"
-      />
-
       <Image
         src={resolveMediaUrl(url)}
         alt={`Room ${index + 1}`}
         fill
-        className="object-cover pointer-events-none"
+        className="object-cover pointer-events-none select-none"
         sizes="200px"
         unoptimized
+        draggable={false}
       />
+
+      {/* Drag handle — grippy icon at bottom center */}
+      <div
+        ref={setActivatorNodeRef}
+        {...attributes}
+        {...listeners}
+        className="absolute bottom-0 inset-x-0 z-20 flex items-center justify-center py-1.5 bg-gradient-to-t from-black/60 to-transparent cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <svg width="20" height="8" viewBox="0 0 20 8" fill="none" className="text-white">
+          <circle cx="4" cy="2" r="1.5" fill="currentColor" />
+          <circle cx="10" cy="2" r="1.5" fill="currentColor" />
+          <circle cx="16" cy="2" r="1.5" fill="currentColor" />
+          <circle cx="4" cy="6" r="1.5" fill="currentColor" />
+          <circle cx="10" cy="6" r="1.5" fill="currentColor" />
+          <circle cx="16" cy="6" r="1.5" fill="currentColor" />
+        </svg>
+      </div>
 
       {/* Foto utama badge */}
       {isFirst && (
-        <div className="absolute top-1.5 left-1.5 z-20 bg-brand-black text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-md pointer-events-none">
+        <div className="absolute top-1.5 left-1.5 z-20 bg-brand-black/80 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-md pointer-events-none">
           Utama
         </div>
       )}
 
-      {/* Delete button — sits above drag handle */}
+      {/* Delete button */}
       <button
         onClick={(e) => { e.stopPropagation(); onDelete(url); }}
-        className="absolute top-1.5 right-1.5 z-20 w-7 h-7 bg-red-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs shadow"
+        className="absolute top-1.5 right-1.5 z-20 w-6 h-6 bg-red-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs shadow"
         title="Hapus foto"
       >
-        🗑
+        ✕
       </button>
-
-      {/* Drag indicator */}
-      <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 z-20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-        <div className="bg-black/50 text-white text-[9px] px-1.5 py-0.5 rounded-full">⠿ seret</div>
-      </div>
     </div>
   );
 }
@@ -395,11 +408,33 @@ interface TenantInfo {
   email: string;
   start_date: string | null;
   booking_id: number;
+  ktp_image_url: string | null;
+  selfie_image_url: string | null;
+}
+
+/** Lightbox sederhana untuk preview foto fullscreen */
+function PhotoLightbox({ src, label, onClose }: { src: string; label: string; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 bg-black/90 z-[60] flex flex-col items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <p className="text-white text-sm font-medium mb-3 opacity-70">{label} — klik untuk tutup</p>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={resolveMediaUrl(src)}
+        alt={label}
+        className="max-w-full max-h-[80vh] rounded-xl object-contain shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>
+  );
 }
 
 function RoomDetailDialog({ room, onClose }: { room: Room; onClose: () => void }) {
   const images = parseImages(room);
   const [tenant, setTenant] = useState<TenantInfo | null | undefined>(undefined);
+  const [lightbox, setLightbox] = useState<{ src: string; label: string } | null>(null);
 
   useEffect(() => {
     if (!room.is_available) {
@@ -415,94 +450,169 @@ function RoomDetailDialog({ room, onClose }: { room: Room; onClose: () => void }
   const facilities = room.facilities ? room.facilities.split(",").map((f) => f.trim()).filter(Boolean) : [];
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-brand-surface border border-gray-200 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
-          <h2 className="text-brand-black font-semibold">Detail Kamar</h2>
-          <button onClick={onClose} className="text-brand-muted hover:text-brand-black text-lg">✕</button>
-        </div>
+    <>
+      {lightbox && (
+        <PhotoLightbox src={lightbox.src} label={lightbox.label} onClose={() => setLightbox(null)} />
+      )}
 
-        <div className="overflow-y-auto p-6 space-y-6">
-          {images.length > 0 && (
-            <div className="grid grid-cols-3 gap-2">
-              {images.map((url, i) => (
-                <div key={i} className="relative aspect-video rounded-xl overflow-hidden bg-gray-100">
-                  <Image src={resolveMediaUrl(url)} alt={`img ${i + 1}`} fill className="object-cover" sizes="200px" unoptimized />
-                </div>
-              ))}
-            </div>
-          )}
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="bg-brand-surface border border-gray-200 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
+            <h2 className="text-brand-black font-semibold">Detail Kamar</h2>
+            <button onClick={onClose} className="text-brand-muted hover:text-brand-black text-lg">✕</button>
+          </div>
 
-          <div className="space-y-3">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h3 className="text-xl font-bold text-brand-black">{room.name}</h3>
-                {room.room_type && <p className="text-brand-muted text-sm mt-0.5">{room.room_type}</p>}
+          <div className="overflow-y-auto p-6 space-y-6">
+            {images.length > 0 && (
+              <div className="grid grid-cols-3 gap-2">
+                {images.map((url, i) => (
+                  <div key={i} className="relative aspect-video rounded-xl overflow-hidden bg-gray-100">
+                    <Image src={resolveMediaUrl(url)} alt={`img ${i + 1}`} fill className="object-cover" sizes="200px" unoptimized />
+                  </div>
+                ))}
               </div>
-              <div className="text-right shrink-0">
-                <p className="text-brand-black font-bold text-lg">{formatRupiah(room.price_per_month)}</p>
-                <p className="text-brand-muted text-xs">per bulan</p>
-              </div>
-            </div>
-            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${room.is_available ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-gray-100 text-gray-500 border border-gray-300"}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${room.is_available ? "bg-emerald-500" : "bg-gray-400"}`} />
-              {room.is_available ? "Tersedia" : "Terisi"}
-            </span>
-
-            {room.description && (
-              <p className="text-brand-black text-sm leading-relaxed">{room.description}</p>
             )}
 
-            {facilities.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-brand-muted uppercase tracking-wide mb-2">Fasilitas</p>
-                <div className="flex flex-wrap gap-2">
-                  {facilities.map((f) => (
-                    <span key={f} className="px-3 py-1 bg-gray-100 text-brand-black text-xs rounded-full border border-gray-200">{f}</span>
-                  ))}
+            <div className="space-y-3">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-xl font-bold text-brand-black">{room.name}</h3>
+                  {room.room_type && <p className="text-brand-muted text-sm mt-0.5">{room.room_type}</p>}
                 </div>
+                <div className="text-right shrink-0">
+                  <p className="text-brand-black font-bold text-lg">{formatRupiah(room.price_per_month)}</p>
+                  <p className="text-brand-muted text-xs">per bulan</p>
+                </div>
+              </div>
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${room.is_available ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-gray-100 text-gray-500 border border-gray-300"}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${room.is_available ? "bg-emerald-500" : "bg-gray-400"}`} />
+                {room.is_available ? "Tersedia" : "Terisi"}
+              </span>
+              {room.description && (
+                <p className="text-brand-black text-sm leading-relaxed">{room.description}</p>
+              )}
+              {facilities.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-brand-muted uppercase tracking-wide mb-2">Fasilitas</p>
+                  <div className="flex flex-wrap gap-2">
+                    {facilities.map((f) => (
+                      <span key={f} className="px-3 py-1 bg-gray-100 text-brand-black text-xs rounded-full border border-gray-200">{f}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {!room.is_available && (
+              <div className="border border-gray-200 rounded-xl p-4 bg-amber-50/50 space-y-4">
+                <p className="text-xs font-semibold text-brand-muted uppercase tracking-wide">👤 Info Penyewa Aktif</p>
+
+                {tenant === undefined ? (
+                  <p className="text-brand-muted text-sm">Memuat info penyewa...</p>
+                ) : tenant === null ? (
+                  <p className="text-brand-muted text-sm italic">Data penyewa tidak ditemukan</p>
+                ) : (
+                  <>
+                    {/* Info teks */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-brand-muted text-xs w-24 shrink-0">Nama</span>
+                        <span className="text-brand-black text-sm font-medium">{tenant.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-brand-muted text-xs w-24 shrink-0">Email</span>
+                        <span className="text-brand-black text-sm">{tenant.email}</span>
+                      </div>
+                      {tenant.start_date && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-brand-muted text-xs w-24 shrink-0">Mulai Sewa</span>
+                          <span className="text-brand-black text-sm">
+                            {new Date(tenant.start_date).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Foto KTP & Selfie */}
+                    {(tenant.ktp_image_url || tenant.selfie_image_url) && (
+                      <div>
+                        <p className="text-xs font-semibold text-brand-muted uppercase tracking-wide mb-2">Dokumen Verifikasi</p>
+                        <div className="grid grid-cols-2 gap-3">
+                          {tenant.ktp_image_url ? (
+                            <button
+                              onClick={() => setLightbox({ src: tenant.ktp_image_url!, label: "Foto KTP" })}
+                              className="group relative aspect-[3/2] rounded-xl overflow-hidden bg-gray-100 border-2 border-dashed border-gray-300 hover:border-brand-black transition-colors"
+                              title="Klik untuk perbesar"
+                            >
+                              <Image
+                                src={resolveMediaUrl(tenant.ktp_image_url)}
+                                alt="Foto KTP"
+                                fill
+                                className="object-cover group-hover:opacity-90 transition-opacity"
+                                sizes="200px"
+                                unoptimized
+                              />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-end justify-center pb-2">
+                                <span className="text-white text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 px-2 py-0.5 rounded-full">
+                                  🔍 Perbesar
+                                </span>
+                              </div>
+                              <div className="absolute top-1.5 left-1.5 bg-black/60 text-white text-[10px] font-medium px-1.5 py-0.5 rounded-md">
+                                KTP
+                              </div>
+                            </button>
+                          ) : (
+                            <div className="aspect-[3/2] rounded-xl bg-gray-100 border-2 border-dashed border-gray-200 flex items-center justify-center">
+                              <span className="text-brand-muted text-xs">Foto KTP tidak ada</span>
+                            </div>
+                          )}
+
+                          {tenant.selfie_image_url ? (
+                            <button
+                              onClick={() => setLightbox({ src: tenant.selfie_image_url!, label: "Foto Selfie" })}
+                              className="group relative aspect-[3/2] rounded-xl overflow-hidden bg-gray-100 border-2 border-dashed border-gray-300 hover:border-brand-black transition-colors"
+                              title="Klik untuk perbesar"
+                            >
+                              <Image
+                                src={resolveMediaUrl(tenant.selfie_image_url)}
+                                alt="Foto Selfie"
+                                fill
+                                className="object-cover group-hover:opacity-90 transition-opacity"
+                                sizes="200px"
+                                unoptimized
+                              />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-end justify-center pb-2">
+                                <span className="text-white text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 px-2 py-0.5 rounded-full">
+                                  🔍 Perbesar
+                                </span>
+                              </div>
+                              <div className="absolute top-1.5 left-1.5 bg-black/60 text-white text-[10px] font-medium px-1.5 py-0.5 rounded-md">
+                                Selfie
+                              </div>
+                            </button>
+                          ) : (
+                            <div className="aspect-[3/2] rounded-xl bg-gray-100 border-2 border-dashed border-gray-200 flex items-center justify-center">
+                              <span className="text-brand-muted text-xs">Foto selfie tidak ada</span>
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-brand-muted text-xs mt-2">Klik foto untuk memperbesar</p>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             )}
           </div>
 
-          {!room.is_available && (
-            <div className="border border-gray-200 rounded-xl p-4 bg-amber-50/50">
-              <p className="text-xs font-semibold text-brand-muted uppercase tracking-wide mb-3">👤 Info Penyewa Aktif</p>
-              {tenant === undefined ? (
-                <p className="text-brand-muted text-sm">Memuat info penyewa...</p>
-              ) : tenant === null ? (
-                <p className="text-brand-muted text-sm italic">Data penyewa tidak ditemukan</p>
-              ) : (
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-brand-muted text-xs w-24">Nama</span>
-                    <span className="text-brand-black text-sm font-medium">{tenant.name}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-brand-muted text-xs w-24">Email</span>
-                    <span className="text-brand-black text-sm">{tenant.email}</span>
-                  </div>
-                  {tenant.start_date && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-brand-muted text-xs w-24">Mulai Sewa</span>
-                      <span className="text-brand-black text-sm">
-                        {new Date(tenant.start_date).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="px-6 py-4 border-t border-gray-200 text-right shrink-0">
-          <button onClick={onClose} className="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-brand-black rounded-xl text-sm font-medium transition-colors">
-            Tutup
-          </button>
+          <div className="px-6 py-4 border-t border-gray-200 text-right shrink-0">
+            <button onClick={onClose} className="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-brand-black rounded-xl text-sm font-medium transition-colors">
+              Tutup
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 // ─── Main Page ──────────────────────────────────────────────────────────────────

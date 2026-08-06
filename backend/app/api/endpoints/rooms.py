@@ -180,6 +180,8 @@ def get_room_tenant(room_id: int, db: Session = Depends(deps.get_db)):
             "email": user.email if user else "",
             "start_date": booking.start_date.isoformat() if booking.start_date else None,
             "booking_id": booking.id,
+            "ktp_image_url": booking.ktp_image_url,
+            "selfie_image_url": booking.selfie_image_url,
         }
     }
 
