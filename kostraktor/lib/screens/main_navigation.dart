@@ -102,8 +102,9 @@ class _MainNavigationState extends State<MainNavigation>
     }
   }
 
-  /// Listen to AuthProvider changes — show a congratulations snackbar
-  /// the moment pendingResident becomes resident.
+  /// Listen to AuthProvider changes:
+  /// 1. calon → pendingResident: booking baru dibuat, mulai polling segera
+  /// 2. pendingResident → resident: booking diapprove, tampilkan notifikasi
   void _listenForApproval() {
     if (!mounted) return;
     final auth = Provider.of<AuthProvider>(context, listen: false);
@@ -112,13 +113,22 @@ class _MainNavigationState extends State<MainNavigation>
     auth.addListener(() {
       if (!mounted) return;
       final newRole = auth.currentRole;
+
+      // ── Booking baru dibuat (calon/guest → pendingResident) ──────────────
+      if (_lastKnownRole != UserRole.pendingResident &&
+          newRole == UserRole.pendingResident) {
+        // Mulai polling segera, tidak perlu tunggu 30 detik pertama
+        _pollTimer?.cancel();
+        _pollTimer = null;
+        _startPollingIfPending();
+      }
+
+      // ── Booking diapprove (pendingResident → resident) ───────────────────
       if (_lastKnownRole == UserRole.pendingResident &&
           newRole == UserRole.resident) {
-        // Stop polling — no longer needed
         _pollTimer?.cancel();
         _pollTimer = null;
 
-        // Show congratulations notification
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Row(
@@ -143,6 +153,7 @@ class _MainNavigationState extends State<MainNavigation>
           ),
         );
       }
+
       _lastKnownRole = newRole;
     });
   }

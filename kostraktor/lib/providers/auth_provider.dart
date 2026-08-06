@@ -1,4 +1,5 @@
-﻿import 'dart:math';
+﻿import 'dart:async';
+import 'dart:math';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -131,6 +132,9 @@ class AuthProvider extends ChangeNotifier {
   String? _assignedRoom;
   String? _accessToken;
 
+  // Internal polling timer — checks approval status every 20s after booking
+  Timer? _approvalPollTimer;
+
   // Override manual: --dart-define=API_BASE_URL=http://...
   // Emulator Android (dev lokal): http://10.0.2.2:8000/api/v1
   // Web/Desktop Flutter (dev lokal): http://127.0.0.1:8000/api/v1
@@ -261,20 +265,22 @@ class AuthProvider extends ChangeNotifier {
         notifyListeners();
         debugPrint('[AutoLogin] SUCCESS');
         return true;
-
       } else if (profileResponse.statusCode == 401) {
         debugPrint('[AutoLogin] Token expired (401), clearing');
         _accessToken = null;
         await _storage.delete(key: 'access_token');
         return false;
-
       } else {
-        debugPrint('[AutoLogin] Server error ${profileResponse.statusCode}, keeping token');
+        debugPrint(
+          '[AutoLogin] Server error ${profileResponse.statusCode}, keeping token',
+        );
         _accessToken = null;
         return false;
       }
     } catch (e) {
-      debugPrint('[AutoLogin] Network/timeout error: $e - keeping token, not logging out');
+      debugPrint(
+        '[AutoLogin] Network/timeout error: $e - keeping token, not logging out',
+      );
       _accessToken = null;
       return false;
     }
@@ -332,7 +338,8 @@ class AuthProvider extends ChangeNotifier {
 
           // Only restore pending booking if backend confirms user is NOT yet a resident.
           // If current_room_id is set, backend already approved them - trust backend.
-          if (_currentRole != UserRole.resident && _currentRole != UserRole.admin) {
+          if (_currentRole != UserRole.resident &&
+              _currentRole != UserRole.admin) {
             final pending = _pendingApprovals
                 .where((p) => p.email == _userEmail)
                 .firstOrNull;
@@ -457,9 +464,9 @@ class AuthProvider extends ChangeNotifier {
                 : 'calon',
           };
 
-
           // Only restore pending booking if backend confirms user is NOT yet a resident.
-          if (_currentRole != UserRole.resident && _currentRole != UserRole.admin) {
+          if (_currentRole != UserRole.resident &&
+              _currentRole != UserRole.admin) {
             final pending = _pendingApprovals
                 .where((p) => p.email == _userEmail)
                 .firstOrNull;
@@ -633,6 +640,10 @@ class AuthProvider extends ChangeNotifier {
     );
 
     notifyListeners();
+
+    // Start polling immediately — no need to wait for app resume or MainNavigation
+    _startApprovalPolling();
+
     return null; // success
   }
 
@@ -1141,6 +1152,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    _stopApprovalPolling();
     _currentRole = UserRole.guest;
     _userEmail = null;
     _userName = null;
@@ -1377,7 +1389,6 @@ class AuthProvider extends ChangeNotifier {
     return null;
   }
 
-
   /// Refresh status user dari backend tanpa logout.
   /// Dipanggil saat app resume dari background, atau setelah booking diapprove.
   Future<bool> refreshUserStatus() async {
@@ -1408,13 +1419,16 @@ class AuthProvider extends ChangeNotifier {
               profile['current_room_name'] ??
               'Kamar ${profile['current_room_id']}';
           debugPrint('[RefreshStatus] Role=RESIDENT room=$_assignedRoom');
+          _stopApprovalPolling(); // no longer pending
         } else {
           _currentRole = _parseRole(profile['role'] ?? 'Customer');
           debugPrint('[RefreshStatus] Role=$_currentRole');
         }
 
         if (oldRole != _currentRole) {
-          debugPrint('[RefreshStatus] Role changed $oldRole -> $_currentRole, notifying');
+          debugPrint(
+            '[RefreshStatus] Role changed $oldRole -> $_currentRole, notifying',
+          );
           notifyListeners();
         }
 
@@ -1433,6 +1447,30 @@ class AuthProvider extends ChangeNotifier {
     }
 
     return false;
+  }
+
+  /// Start polling /auth/me every 20 seconds until backend confirms approval.
+  /// Called automatically after submitBooking succeeds.
+  /// Safe to call multiple times — cancels any existing timer first.
+  void _startApprovalPolling() {
+    _approvalPollTimer?.cancel();
+    debugPrint('[ApprovalPoll] Starting polling every 20s...');
+
+    _approvalPollTimer = Timer.periodic(const Duration(seconds: 20), (_) async {
+      if (_currentRole != UserRole.pendingResident) {
+        debugPrint('[ApprovalPoll] No longer pending, stopping poll');
+        _approvalPollTimer?.cancel();
+        _approvalPollTimer = null;
+        return;
+      }
+      debugPrint('[ApprovalPoll] Checking approval status...');
+      await refreshUserStatus();
+    });
+  }
+
+  void _stopApprovalPolling() {
+    _approvalPollTimer?.cancel();
+    _approvalPollTimer = null;
   }
 
   UserRole _parseRole(String role) {
