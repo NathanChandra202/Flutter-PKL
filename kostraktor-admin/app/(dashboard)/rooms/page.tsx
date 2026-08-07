@@ -408,8 +408,8 @@ interface TenantInfo {
   email: string;
   start_date: string | null;
   booking_id: number;
-  ktp_image_url: string | null;
-  selfie_image_url: string | null;
+  ktp_image_url?: string | null;   // optional — server lama tidak return field ini
+  selfie_image_url?: string | null; // optional — server lama tidak return field ini
 }
 
 /** Lightbox sederhana untuk preview foto fullscreen */
