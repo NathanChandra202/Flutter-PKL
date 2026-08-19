@@ -121,6 +121,10 @@ export interface Booking {
   booking_date: string;
   start_date: string;
   status: string;
+  duration_months: number | null;
+  end_date: string | null;
+  is_renewal_requested: boolean | null;
+  pending_renewal_months: number | null;
   room_name: string | null;
   user_email: string | null;
   user_name: string | null;

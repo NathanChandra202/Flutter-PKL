@@ -1,8 +1,11 @@
+import os
+import uuid
 from typing import List, Optional
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
+from dateutil.relativedelta import relativedelta
 
 from app.api import deps
 from app.models.booking import Booking
@@ -11,9 +14,22 @@ from app.models.user import User
 
 router = APIRouter()
 
+
+# ─── Pydantic schemas ──────────────────────────────────────────────────────────
+
 class BookingCreate(BaseModel):
     room_name: str
     start_date: datetime
+    duration_months: int = 1
+
+
+class StatusUpdate(BaseModel):
+    status: str
+
+
+class RenewalRequest(BaseModel):
+    additional_months: int
+
 
 class BookingResponse(BaseModel):
     id: int
@@ -22,12 +38,16 @@ class BookingResponse(BaseModel):
     booking_date: datetime
     start_date: datetime
     status: str
-    
+
+    duration_months: Optional[int] = 1
+    end_date: Optional[datetime] = None
+    is_renewal_requested: Optional[bool] = False
+    pending_renewal_months: Optional[int] = None
+
     room_name: Optional[str] = None
     user_email: Optional[str] = None
     user_name: Optional[str] = None
-    
-    # Document fields
+
     ktp_image_url: Optional[str] = None
     selfie_image_url: Optional[str] = None
     bukti_bayar_url: Optional[str] = None
@@ -36,31 +56,66 @@ class BookingResponse(BaseModel):
     class Config:
         orm_mode = True
 
+
+# ─── Helpers ───────────────────────────────────────────────────────────────────
+
+def _to_booking_response(booking: Booking) -> BookingResponse:
+    return BookingResponse(
+        id=booking.id,
+        user_id=booking.user_id,
+        room_id=booking.room_id,
+        booking_date=booking.booking_date,
+        start_date=booking.start_date,
+        status=booking.status,
+        duration_months=booking.duration_months,
+        end_date=booking.end_date,
+        is_renewal_requested=booking.is_renewal_requested,
+        pending_renewal_months=booking.pending_renewal_months,
+        room_name=booking.room.name if booking.room else "Unknown Room",
+        user_email=booking.user.email if booking.user else "",
+        user_name=(
+            booking.user.profile.nama_lengkap
+            if booking.user and booking.user.profile
+            else ""
+        ),
+        ktp_image_url=booking.ktp_image_url,
+        selfie_image_url=booking.selfie_image_url,
+        bukti_bayar_url=booking.bukti_bayar_url,
+        referensi_transaksi=booking.referensi_transaksi,
+    )
+
+
+# ─── Endpoints ─────────────────────────────────────────────────────────────────
+
 @router.post("/", response_model=BookingResponse)
-def create_booking(booking_in: BookingCreate, db: Session = Depends(deps.get_db), current_user: User = Depends(deps.get_current_active_user)):
-    # Find room by name (since flutter might send name for simplicity, or we adapt flutter to send id)
+def create_booking(
+    booking_in: BookingCreate,
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_active_user),
+):
     room = db.query(KostRoom).filter(KostRoom.name == booking_in.room_name).first()
     if not room:
-        # Fallback for mock data testing
         room = db.query(KostRoom).first()
         if not room:
             raise HTTPException(status_code=404, detail="Room not found")
+
+    # Clamp duration to a sane range
+    months = max(1, min(booking_in.duration_months, 120))
+    end_date = booking_in.start_date + relativedelta(months=months)
 
     booking = Booking(
         user_id=current_user.id,
         room_id=room.id,
         start_date=booking_in.start_date,
-        status="PENDING"
+        status="PENDING",
+        duration_months=months,
+        end_date=end_date,
     )
     db.add(booking)
     db.commit()
     db.refresh(booking)
-    
     return _to_booking_response(booking)
 
-import os
-import uuid
-from fastapi import File, UploadFile
 
 @router.post("/{booking_id}/upload-documents")
 async def upload_booking_documents(
@@ -69,7 +124,6 @@ async def upload_booking_documents(
     selfie_image: UploadFile = File(None),
     bukti_bayar: UploadFile = File(None),
     db: Session = Depends(deps.get_db),
-    # Optional: check if user owns the booking or is admin
 ):
     booking = db.query(Booking).filter(Booking.id == booking_id).first()
     if not booking:
@@ -101,37 +155,48 @@ async def upload_booking_documents(
         "bukti_bayar_url": booking.bukti_bayar_url,
     }
 
+
 @router.get("/me", response_model=List[BookingResponse])
-def get_my_bookings(db: Session = Depends(deps.get_db), current_user: User = Depends(deps.get_current_active_user)):
+def get_my_bookings(
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_active_user),
+):
     bookings = db.query(Booking).filter(Booking.user_id == current_user.id).all()
     return [_to_booking_response(b) for b in bookings]
 
+
 @router.get("/pending", response_model=List[BookingResponse])
-def get_pending_bookings(db: Session = Depends(deps.get_db), current_user: User = Depends(deps.get_current_active_user)):
-    # Simple admin check
+def get_pending_bookings(
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_active_user),
+):
     if current_user.role.name not in ["Admin", "SuperAdmin"]:
         raise HTTPException(status_code=403, detail="Not enough permissions")
-        
     bookings = db.query(Booking).filter(Booking.status == "PENDING").all()
     return [_to_booking_response(b) for b in bookings]
 
+
 @router.get("/all", response_model=List[BookingResponse])
-def get_all_bookings(db: Session = Depends(deps.get_db), current_user: User = Depends(deps.get_current_active_user)):
-    # Simple admin check
+def get_all_bookings(
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_active_user),
+):
     if current_user.role.name not in ["Admin", "SuperAdmin"]:
         raise HTTPException(status_code=403, detail="Not enough permissions")
-        
-    bookings = db.query(Booking).all()
+    bookings = db.query(Booking).order_by(Booking.booking_date.desc()).all()
     return [_to_booking_response(b) for b in bookings]
 
-class StatusUpdate(BaseModel):
-    status: str
 
 @router.post("/{booking_id}/status", response_model=BookingResponse)
-def update_booking_status(booking_id: int, status_update: StatusUpdate, db: Session = Depends(deps.get_db), current_user: User = Depends(deps.get_current_active_user)):
+def update_booking_status(
+    booking_id: int,
+    status_update: StatusUpdate,
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_active_user),
+):
     if current_user.role.name not in ["Admin", "SuperAdmin"]:
         raise HTTPException(status_code=403, detail="Not enough permissions")
-        
+
     booking = db.query(Booking).filter(Booking.id == booking_id).first()
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
@@ -139,19 +204,16 @@ def update_booking_status(booking_id: int, status_update: StatusUpdate, db: Sess
     old_status = booking.status
     booking.status = status_update.status
 
-    # Get associated room and user
     room = booking.room
     booking_user = booking.user
 
     if status_update.status == "APPROVED":
-        # Lock the room and mark user as active resident
         if room:
             room.is_available = False
         if booking_user:
             booking_user.current_room_id = booking.room_id
 
     elif status_update.status == "REJECTED":
-        # If this was previously APPROVED, restore the room and clear user's room
         if old_status == "APPROVED":
             if room:
                 room.is_available = True
@@ -162,19 +224,62 @@ def update_booking_status(booking_id: int, status_update: StatusUpdate, db: Sess
     db.refresh(booking)
     return _to_booking_response(booking)
 
-def _to_booking_response(booking: Booking) -> BookingResponse:
-    return BookingResponse(
-        id=booking.id,
-        user_id=booking.user_id,
-        room_id=booking.room_id,
-        booking_date=booking.booking_date,
-        start_date=booking.start_date,
-        status=booking.status,
-        room_name=booking.room.name if booking.room else "Unknown Room",
-        user_email=booking.user.email if booking.user else "",
-        user_name=booking.user.profile.nama_lengkap if booking.user and booking.user.profile else "",
-        ktp_image_url=booking.ktp_image_url,
-        selfie_image_url=booking.selfie_image_url,
-        bukti_bayar_url=booking.bukti_bayar_url,
-        referensi_transaksi=booking.referensi_transaksi
-    )
+
+@router.post("/{booking_id}/request-renewal")
+def request_renewal(
+    booking_id: int,
+    renewal_in: RenewalRequest,
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_active_user),
+):
+    """User mengajukan perpanjangan sewa."""
+    booking = db.query(Booking).filter(
+        Booking.id == booking_id,
+        Booking.user_id == current_user.id,
+    ).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    if booking.status != "APPROVED":
+        raise HTTPException(
+            status_code=400, detail="Hanya booking aktif yang bisa diperpanjang"
+        )
+    if renewal_in.additional_months < 1:
+        raise HTTPException(status_code=400, detail="Durasi perpanjangan minimal 1 bulan")
+
+    booking.is_renewal_requested = True
+    booking.pending_renewal_months = renewal_in.additional_months
+    db.commit()
+    return {"message": "Permintaan perpanjangan terkirim, menunggu persetujuan admin"}
+
+
+@router.post("/{booking_id}/approve-renewal")
+def approve_renewal(
+    booking_id: int,
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_active_user),
+):
+    """Admin menyetujui perpanjangan sewa."""
+    if current_user.role.name not in ["Admin", "SuperAdmin"]:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+
+    booking = db.query(Booking).filter(Booking.id == booking_id).first()
+    if not booking or not booking.is_renewal_requested:
+        raise HTTPException(
+            status_code=404, detail="Tidak ada permintaan perpanjangan untuk booking ini"
+        )
+
+    months = booking.pending_renewal_months or 1
+
+    # Hitung dari end_date saat ini (atau dari sekarang kalau NULL)
+    base_date = booking.end_date or datetime.now()
+    booking.end_date = base_date + relativedelta(months=months)
+    booking.duration_months = (booking.duration_months or 0) + months
+    booking.is_renewal_requested = False
+    booking.pending_renewal_months = None
+
+    db.commit()
+    return {
+        "message": "Perpanjangan disetujui",
+        "new_end_date": booking.end_date.isoformat(),
+        "duration_months": booking.duration_months,
+    }

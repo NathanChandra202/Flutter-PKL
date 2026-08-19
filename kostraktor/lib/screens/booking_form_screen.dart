@@ -21,6 +21,7 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
   final _tanggalController = TextEditingController();
   bool _isLoading = false;
   DateTime? _selectedDate;
+  int _durationMonths = 1; // Durasi sewa dalam bulan
 
   // Verification state
   Uint8List? _ktpBytes;
@@ -112,7 +113,9 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
       builder: (_) => PopScope(
         canPop: false,
         child: AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -134,7 +137,11 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
               const SizedBox(height: 8),
               Text(
                 'AI sedang mencocokkan wajah KTP dengan selfie Anda.\nProses ini memerlukan waktu 10–30 detik.',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600, height: 1.5),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                  height: 1.5,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
@@ -146,7 +153,10 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
 
     final auth = Provider.of<AuthProvider>(context, listen: false);
     // Use raw KTP bytes (no watermark) for better face detection accuracy
-    final error = await auth.verifyFaceMatch(result.ktpBytesRaw!, result.selfieBytes!);
+    final error = await auth.verifyFaceMatch(
+      result.ktpBytesRaw!,
+      result.selfieBytes!,
+    );
 
     if (!mounted) return;
     Navigator.of(context).pop(); // close loading dialog
@@ -154,7 +164,7 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
     if (error == null) {
       // ✅ Verification passed
       setState(() {
-        _ktpBytes = result.ktpBytes;      // watermarked for display
+        _ktpBytes = result.ktpBytes; // watermarked for display
         _selfieBytes = result.selfieBytes;
         _verificationPassed = true;
       });
@@ -165,13 +175,18 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
             children: [
               Icon(Icons.check_circle, color: Colors.white, size: 18),
               SizedBox(width: 8),
-              Text('Verifikasi Wajah Berhasil! ✅', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text(
+                'Verifikasi Wajah Berhasil! ✅',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ],
           ),
           backgroundColor: Colors.green.shade600,
           duration: const Duration(seconds: 3),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     } else {
@@ -223,13 +238,31 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.lightbulb_outline, color: Colors.blue.shade700, size: 15),
+                          Icon(
+                            Icons.lightbulb_outline,
+                            color: Colors.blue.shade700,
+                            size: 15,
+                          ),
                           const SizedBox(width: 6),
-                          Text('Tips', style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold, fontSize: 12)),
+                          Text(
+                            'Tips',
+                            style: TextStyle(
+                              color: Colors.blue.shade700,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 6),
-                      Text(suggestion, style: TextStyle(fontSize: 12, color: Colors.blue.shade800, height: 1.5)),
+                      Text(
+                        suggestion,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue.shade800,
+                          height: 1.5,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -246,10 +279,15 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryBlack,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             icon: const Icon(Icons.refresh, size: 16),
-            label: const Text('Coba Lagi', style: TextStyle(fontWeight: FontWeight.bold)),
+            label: const Text(
+              'Coba Lagi',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             onPressed: () {
               Navigator.pop(ctx);
               _openLiveness();
@@ -334,12 +372,13 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
       roomType: widget.unitData?['title'] ?? 'Tipe Standard',
       bookingTime: DateTime.now(),
       tanggalMulaiMenghuni: _selectedDate,
+      durationMonths: _durationMonths,
       ktpBytes: _ktpBytes,
       selfieBytes: _selfieBytes,
     );
 
     final errorMsg = await auth.submitBooking(booking);
-    
+
     if (!mounted) return;
     setState(() => _isLoading = false);
 
@@ -637,6 +676,123 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
                       ),
                     ],
                   ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // ── Durasi Sewa ──────────────────────────────────────────────────
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Durasi Sewa',
+                    style: TextStyle(
+                      color: AppTheme.primaryBlack,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Pilih berapa bulan Anda ingin tinggal',
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                  ),
+                  const SizedBox(height: 16),
+                  // Chip selector 1 / 3 / 6 / 12 bulan
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [1, 3, 6, 12].map((months) {
+                      final selected = _durationMonths == months;
+                      return GestureDetector(
+                        onTap: () => setState(() => _durationMonths = months),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? AppTheme.primaryBlack
+                                : Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: selected
+                                  ? AppTheme.primaryBlack
+                                  : Colors.grey.shade300,
+                            ),
+                          ),
+                          child: Text(
+                            '$months Bulan',
+                            style: TextStyle(
+                              color: selected
+                                  ? Colors.white
+                                  : AppTheme.primaryBlack,
+                              fontWeight: selected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 12),
+                  // Preview tanggal selesai
+                  if (_selectedDate != null)
+                    Builder(
+                      builder: (ctx) {
+                        final months = [
+                          'Jan',
+                          'Feb',
+                          'Mar',
+                          'Apr',
+                          'Mei',
+                          'Jun',
+                          'Jul',
+                          'Ags',
+                          'Sep',
+                          'Okt',
+                          'Nov',
+                          'Des',
+                        ];
+                        // Simple month addition
+                        final rawMonth =
+                            _selectedDate!.month - 1 + _durationMonths;
+                        final endYear = _selectedDate!.year + rawMonth ~/ 12;
+                        final endMonth = rawMonth % 12;
+                        final endDay = _selectedDate!.day;
+                        final endLabel = '$endDay ${months[endMonth]} $endYear';
+                        return Row(
+                          children: [
+                            Icon(
+                              Icons.event_available,
+                              size: 14,
+                              color: Colors.green.shade600,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Selesai sewa: $endLabel',
+                              style: TextStyle(
+                                color: Colors.green.shade700,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                 ],
               ),
             ),

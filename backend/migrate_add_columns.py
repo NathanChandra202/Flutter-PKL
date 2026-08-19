@@ -47,6 +47,34 @@ def migrate():
             "sql_pg":     "ALTER TABLE reviews ADD COLUMN manual_reviewer_name VARCHAR",
             "sql_sqlite": "ALTER TABLE reviews ADD COLUMN manual_reviewer_name VARCHAR",
         },
+        # bookings.duration_months — durasi sewa dalam bulan
+        {
+            "table": "bookings",
+            "column": "duration_months",
+            "sql_pg":     "ALTER TABLE bookings ADD COLUMN duration_months INTEGER NOT NULL DEFAULT 1",
+            "sql_sqlite": "ALTER TABLE bookings ADD COLUMN duration_months INTEGER NOT NULL DEFAULT 1",
+        },
+        # bookings.end_date — tanggal selesai sewa (NULL untuk booking lama)
+        {
+            "table": "bookings",
+            "column": "end_date",
+            "sql_pg":     "ALTER TABLE bookings ADD COLUMN end_date TIMESTAMP",
+            "sql_sqlite": "ALTER TABLE bookings ADD COLUMN end_date DATETIME",
+        },
+        # bookings.is_renewal_requested — flag request perpanjangan
+        {
+            "table": "bookings",
+            "column": "is_renewal_requested",
+            "sql_pg":     "ALTER TABLE bookings ADD COLUMN is_renewal_requested BOOLEAN NOT NULL DEFAULT FALSE",
+            "sql_sqlite": "ALTER TABLE bookings ADD COLUMN is_renewal_requested BOOLEAN NOT NULL DEFAULT 0",
+        },
+        # bookings.pending_renewal_months — berapa bulan tambahan yang diminta
+        {
+            "table": "bookings",
+            "column": "pending_renewal_months",
+            "sql_pg":     "ALTER TABLE bookings ADD COLUMN pending_renewal_months INTEGER",
+            "sql_sqlite": "ALTER TABLE bookings ADD COLUMN pending_renewal_months INTEGER",
+        },
     ]
 
     # Detect DB dialect

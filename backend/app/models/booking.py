@@ -15,7 +15,15 @@ class Booking(Base):
     start_date = Column(DateTime)
     
     status = Column(String, default="PENDING") # PENDING, APPROVED, REJECTED
-    
+
+    # Durasi sewa & tanggal selesai
+    duration_months = Column(Integer, default=1, nullable=False)
+    end_date = Column(DateTime, nullable=True)  # NULL untuk booking lama
+
+    # Perpanjangan sewa
+    is_renewal_requested = Column(Boolean, default=False)
+    pending_renewal_months = Column(Integer, nullable=True)
+
     # Document URLs
     ktp_image_url = Column(String, nullable=True)
     selfie_image_url = Column(String, nullable=True)

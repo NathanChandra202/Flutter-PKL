@@ -71,6 +71,7 @@ class BookingData {
   final String roomType;
   final DateTime bookingTime;
   final DateTime? tanggalMulaiMenghuni; // Tanggal mulai menghuni
+  final int durationMonths; // Durasi sewa dalam bulan
   bool waConfirmed; // user has sent WA to penjaga kos
   final String referensiTransaksi; // auto-generated reference number
   final int uniquePaymentCode; // guaranteed unique 3-digit code
@@ -85,6 +86,7 @@ class BookingData {
     required this.roomType,
     required this.bookingTime,
     this.tanggalMulaiMenghuni,
+    this.durationMonths = 1,
     this.waConfirmed = false,
     String? referensiTransaksi,
     int? uniquePaymentCode,
@@ -547,6 +549,7 @@ class AuthProvider extends ChangeNotifier {
           'start_date':
               data.tanggalMulaiMenghuni?.toIso8601String() ??
               DateTime.now().toIso8601String(),
+          'duration_months': data.durationMonths,
         }),
       );
 
@@ -1447,6 +1450,28 @@ class AuthProvider extends ChangeNotifier {
     }
 
     return false;
+  }
+
+  /// User mengajukan perpanjangan sewa.
+  /// Returns null on success, error message on failure.
+  Future<String?> requestRenewal(int bookingId, int additionalMonths) async {
+    if (_accessToken == null)
+      return 'Sesi telah berakhir, silakan login kembali.';
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/bookings/$bookingId/request-renewal'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_accessToken',
+        },
+        body: json.encode({'additional_months': additionalMonths}),
+      );
+      if (response.statusCode == 200) return null;
+      final err = json.decode(response.body);
+      return err['detail'] ?? 'Gagal mengajukan perpanjangan.';
+    } catch (e) {
+      return 'Terjadi kesalahan jaringan: $e';
+    }
   }
 
   /// Start polling /auth/me every 20 seconds until backend confirms approval.

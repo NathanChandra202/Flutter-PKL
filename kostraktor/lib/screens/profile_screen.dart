@@ -28,7 +28,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _loadingBookings = true);
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final data = await auth.fetchMyBookings();
-    if (mounted) setState(() { _myBookings = data; _loadingBookings = false; });
+    if (mounted)
+      setState(() {
+        _myBookings = data;
+        _loadingBookings = false;
+      });
   }
 
   @override
@@ -38,7 +42,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!auth.isLoggedIn) {
       return _buildGuestView(context);
     }
-
 
     return Scaffold(
       backgroundColor: AppTheme.bgWhite,
@@ -204,6 +207,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         _formatTanggal(auth.bookingData!.tanggalMulaiMenghuni!),
                       ),
                     ],
+                    // Durasi & tanggal selesai dari backend
+                    _BookingDurationSection(
+                      bookings: _myBookings,
+                      auth: auth,
+                      onRenewalSuccess: _loadBookings,
+                    ),
                   ],
                 ),
               ),
@@ -233,19 +242,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 final message = Uri.encodeComponent(
                   'Halo Admin Kostraktor, saya $name ($room) ingin menghubungi manajemen.',
                 );
-                final waUrl = Uri.parse('https://wa.me/6281234567890?text=$message');
-                final waDeepLink = Uri.parse('whatsapp://send?phone=6281234567890&text=$message');
+                final waUrl = Uri.parse(
+                  'https://wa.me/6281234567890?text=$message',
+                );
+                final waDeepLink = Uri.parse(
+                  'whatsapp://send?phone=6281234567890&text=$message',
+                );
                 try {
-                  final launched = await launchUrl(waUrl, mode: LaunchMode.externalApplication);
-                  if (!launched) await launchUrl(waDeepLink, mode: LaunchMode.externalApplication);
+                  final launched = await launchUrl(
+                    waUrl,
+                    mode: LaunchMode.externalApplication,
+                  );
+                  if (!launched)
+                    await launchUrl(
+                      waDeepLink,
+                      mode: LaunchMode.externalApplication,
+                    );
                 } catch (_) {
                   try {
-                    await launchUrl(waDeepLink, mode: LaunchMode.externalApplication);
+                    await launchUrl(
+                      waDeepLink,
+                      mode: LaunchMode.externalApplication,
+                    );
                   } catch (e) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('WhatsApp tidak ditemukan. Pastikan WA sudah terinstall.'),
+                          content: Text(
+                            'WhatsApp tidak ditemukan. Pastikan WA sudah terinstall.',
+                          ),
                         ),
                       );
                     }
@@ -329,19 +354,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 final message = Uri.encodeComponent(
                   'Halo Kak Admin Kostraktor\n\nSaya ${booking?.nama ?? auth.userName ?? 'pengguna'} ingin menanyakan status booking saya (${booking?.roomType ?? 'unit'}).\n\nMohon bantuannya ya, terima kasih',
                 );
-                final waUrl = Uri.parse('https://wa.me/6281234567890?text=$message');
-                final waDeepLink = Uri.parse('whatsapp://send?phone=6281234567890&text=$message');
+                final waUrl = Uri.parse(
+                  'https://wa.me/6281234567890?text=$message',
+                );
+                final waDeepLink = Uri.parse(
+                  'whatsapp://send?phone=6281234567890&text=$message',
+                );
                 try {
-                  final launched = await launchUrl(waUrl, mode: LaunchMode.externalApplication);
-                  if (!launched) await launchUrl(waDeepLink, mode: LaunchMode.externalApplication);
+                  final launched = await launchUrl(
+                    waUrl,
+                    mode: LaunchMode.externalApplication,
+                  );
+                  if (!launched)
+                    await launchUrl(
+                      waDeepLink,
+                      mode: LaunchMode.externalApplication,
+                    );
                 } catch (_) {
                   try {
-                    await launchUrl(waDeepLink, mode: LaunchMode.externalApplication);
+                    await launchUrl(
+                      waDeepLink,
+                      mode: LaunchMode.externalApplication,
+                    );
                   } catch (e) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('WhatsApp tidak ditemukan. Pastikan WA sudah terinstall.'),
+                          content: Text(
+                            'WhatsApp tidak ditemukan. Pastikan WA sudah terinstall.',
+                          ),
                         ),
                       );
                     }
@@ -370,22 +411,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: () => _showCheckOutDialog(context, auth),
-                  icon: const Icon(Icons.logout_outlined,
-                      color: Colors.deepOrange, size: 18),
-                  label: const Text('Check Out',
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                          color: Colors.deepOrange,
-                          fontWeight: FontWeight.bold)),
+                  icon: const Icon(
+                    Icons.logout_outlined,
+                    color: Colors.deepOrange,
+                    size: 18,
+                  ),
+                  label: const Text(
+                    'Check Out',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.deepOrange,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(
-                        color: Colors.deepOrange, width: 1.5),
+                      color: Colors.deepOrange,
+                      width: 1.5,
+                    ),
                     padding: const EdgeInsets.symmetric(
-                        vertical: 16, horizontal: 12),
+                      vertical: 16,
+                      horizontal: 12,
+                    ),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    backgroundColor:
-                        Colors.deepOrange.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    backgroundColor: Colors.deepOrange.withValues(alpha: 0.05),
                   ),
                 ),
               ),
@@ -546,7 +597,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Row(
                 children: [
                   Container(
-                    width: 40, height: 40,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
                       color: color.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
@@ -569,13 +621,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         if (startDate != null)
                           Text(
                             'Mulai: ${startDate.day}/${startDate.month}/${startDate.year}',
-                            style: const TextStyle(color: AppTheme.textMuted, fontSize: 11),
+                            style: const TextStyle(
+                              color: AppTheme.textMuted,
+                              fontSize: 11,
+                            ),
                           ),
                       ],
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: color.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
@@ -829,7 +887,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Text(
               'Dengan melakukan check out:',
               style: TextStyle(
-                  color: Colors.grey.shade700, fontWeight: FontWeight.w600, fontSize: 13),
+                color: Colors.grey.shade700,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
             ),
             const SizedBox(height: 8),
             _checkOutBullet('Kontrak sewa Anda akan berakhir'),
@@ -846,7 +907,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Text(
                 'Tindakan ini tidak dapat dibatalkan. Hubungi admin jika ada pertanyaan sebelum melanjutkan.',
                 style: TextStyle(
-                    color: Colors.deepOrange.shade800, fontSize: 12, height: 1.4),
+                  color: Colors.deepOrange.shade800,
+                  fontSize: 12,
+                  height: 1.4,
+                ),
               ),
             ),
           ],
@@ -854,14 +918,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal', style: TextStyle(color: AppTheme.textMuted)),
+            child: const Text(
+              'Batal',
+              style: TextStyle(color: AppTheme.textMuted),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.deepOrange,
               foregroundColor: Colors.white,
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             onPressed: () {
               Navigator.pop(ctx);
@@ -881,10 +950,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('• ', style: TextStyle(color: Colors.deepOrange, fontWeight: FontWeight.bold)),
+          const Text(
+            '• ',
+            style: TextStyle(
+              color: Colors.deepOrange,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           Expanded(
-              child: Text(text,
-                  style: TextStyle(color: Colors.grey.shade700, fontSize: 12, height: 1.4))),
+            child: Text(
+              text,
+              style: TextStyle(
+                color: Colors.grey.shade700,
+                fontSize: 12,
+                height: 1.4,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -897,14 +979,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Konfirmasi Check Out',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        title: const Text(
+          'Konfirmasi Check Out',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Alasan check out (opsional):',
-                style: TextStyle(color: AppTheme.textMuted, fontSize: 13)),
+            const Text(
+              'Alasan check out (opsional):',
+              style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+            ),
             const SizedBox(height: 8),
             TextField(
               controller: reasonController,
@@ -912,7 +998,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: const TextStyle(fontSize: 13),
               decoration: InputDecoration(
                 hintText: 'Contoh: Pindah kerja, kontrak selesai, dsb.',
-                hintStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                hintStyle: const TextStyle(
+                  color: AppTheme.textMuted,
+                  fontSize: 12,
+                ),
                 filled: true,
                 fillColor: Colors.grey.shade50,
                 contentPadding: const EdgeInsets.all(12),
@@ -934,14 +1023,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
               reasonController.dispose();
               Navigator.pop(ctx);
             },
-            child: const Text('Batal', style: TextStyle(color: AppTheme.textMuted)),
+            child: const Text(
+              'Batal',
+              style: TextStyle(color: AppTheme.textMuted),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red.shade700,
               foregroundColor: Colors.white,
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             onPressed: () {
               reasonController.dispose();
@@ -951,7 +1045,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               // Show snackbar then navigate to login
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Check out berhasil. Terima kasih telah tinggal di Kostraktor!'),
+                  content: Text(
+                    'Check out berhasil. Terima kasih telah tinggal di Kostraktor!',
+                  ),
                   backgroundColor: Colors.deepOrange,
                 ),
               );
@@ -961,8 +1057,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 (route) => false,
               );
             },
-            child: const Text('KONFIRMASI CHECK OUT',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            child: const Text(
+              'KONFIRMASI CHECK OUT',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+            ),
           ),
         ],
       ),
@@ -1348,5 +1446,320 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
+}
 
+// ─── Booking Duration & Renewal Widget ─────────────────────────────────────────
+
+class _BookingDurationSection extends StatefulWidget {
+  final List<Map<String, dynamic>> bookings;
+  final AuthProvider auth;
+  final VoidCallback onRenewalSuccess;
+
+  const _BookingDurationSection({
+    required this.bookings,
+    required this.auth,
+    required this.onRenewalSuccess,
+  });
+
+  @override
+  State<_BookingDurationSection> createState() =>
+      _BookingDurationSectionState();
+}
+
+class _BookingDurationSectionState extends State<_BookingDurationSection> {
+  bool _submitting = false;
+
+  // Cari booking APPROVED dari data backend
+  Map<String, dynamic>? get _activeBooking {
+    try {
+      return widget.bookings.firstWhere(
+        (b) => b['status'] == 'APPROVED',
+        orElse: () => {},
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _fmtDate(String? iso) {
+    if (iso == null) return '-';
+    final d = DateTime.tryParse(iso);
+    if (d == null) return '-';
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Ags',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
+    ];
+    return '${d.day} ${months[d.month - 1]} ${d.year}';
+  }
+
+  bool _isExpiringSoon(String? iso) {
+    if (iso == null) return false;
+    final d = DateTime.tryParse(iso);
+    if (d == null) return false;
+    return d.difference(DateTime.now()).inDays <= 30;
+  }
+
+  Future<void> _showRenewalDialog(int bookingId) async {
+    int selectedMonths = 1;
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'Ajukan Perpanjangan Sewa',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Pilih berapa bulan tambahan:',
+                style: TextStyle(fontSize: 13),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                children: [1, 3, 6, 12].map((m) {
+                  final sel = selectedMonths == m;
+                  return GestureDetector(
+                    onTap: () => setLocal(() => selectedMonths = m),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: sel
+                            ? AppTheme.primaryBlack
+                            : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: sel
+                              ? AppTheme.primaryBlack
+                              : Colors.grey.shade300,
+                        ),
+                      ),
+                      child: Text(
+                        '$m bln',
+                        style: TextStyle(
+                          color: sel ? Colors.white : AppTheme.primaryBlack,
+                          fontWeight: sel ? FontWeight.bold : FontWeight.normal,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryBlack,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              onPressed: _submitting
+                  ? null
+                  : () async {
+                      Navigator.pop(ctx);
+                      setState(() => _submitting = true);
+                      final err = await widget.auth.requestRenewal(
+                        bookingId,
+                        selectedMonths,
+                      );
+                      if (!mounted) return;
+                      setState(() => _submitting = false);
+                      if (err == null) {
+                        widget.onRenewalSuccess();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Text(
+                              '✅ Permintaan perpanjangan terkirim!',
+                            ),
+                            backgroundColor: Colors.green.shade700,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(err),
+                            backgroundColor: Colors.red.shade700,
+                          ),
+                        );
+                      }
+                    },
+              child: const Text('Kirim', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final booking = _activeBooking;
+    if (booking == null || booking.isEmpty) return const SizedBox.shrink();
+
+    final endDate = booking['end_date'] as String?;
+    final durationMonths = booking['duration_months'] as int? ?? 1;
+    final isRenewalRequested =
+        booking['is_renewal_requested'] as bool? ?? false;
+    final bookingId = booking['id'] as int?;
+    final expiringSoon = _isExpiringSoon(endDate);
+
+    return Column(
+      children: [
+        const SizedBox(height: 10),
+        // Durasi sewa
+        Row(
+          children: [
+            Icon(Icons.timelapse, size: 18, color: AppTheme.textMuted),
+            const SizedBox(width: 12),
+            Text(
+              'Durasi Sewa: ',
+              style: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
+            ),
+            Text(
+              '$durationMonths Bulan',
+              style: const TextStyle(
+                color: AppTheme.primaryBlack,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        if (endDate != null) ...[
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Icon(
+                Icons.event_busy,
+                size: 18,
+                color: expiringSoon ? Colors.orange : AppTheme.textMuted,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Selesai Sewa: ',
+                style: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
+              ),
+              Text(
+                _fmtDate(endDate),
+                style: TextStyle(
+                  color: expiringSoon
+                      ? Colors.orange.shade700
+                      : AppTheme.primaryBlack,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (expiringSoon) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.orange.shade300),
+                  ),
+                  child: Text(
+                    'Segera Habis',
+                    style: TextStyle(
+                      color: Colors.orange.shade700,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+
+        // Status perpanjangan / tombol ajukan
+        const SizedBox(height: 14),
+        if (isRenewalRequested)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.amber.shade50,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.amber.shade300),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.pending, color: Colors.amber.shade700, size: 18),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Menunggu persetujuan perpanjangan dari admin',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else if (bookingId != null && (expiringSoon || endDate == null))
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.primaryBlack,
+                side: const BorderSide(color: AppTheme.primaryBlack),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              icon: _submitting
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppTheme.primaryBlack,
+                      ),
+                    )
+                  : const Icon(Icons.autorenew, size: 18),
+              label: Text(
+                _submitting ? 'Mengirim...' : 'Ajukan Perpanjangan Sewa',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              onPressed: _submitting
+                  ? null
+                  : () => _showRenewalDialog(bookingId),
+            ),
+          ),
+      ],
+    );
+  }
 }
