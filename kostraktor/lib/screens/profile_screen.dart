@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../config/app_env.dart';
 import '../utils/app_theme.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
-import 'admin_panel_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -1624,13 +1622,19 @@ class _BookingDurationSectionState extends State<_BookingDurationSection> {
   @override
   Widget build(BuildContext context) {
     final booking = _activeBooking;
-    if (booking == null || booking.isEmpty) return const SizedBox.shrink();
 
-    final endDate = booking['end_date'] as String?;
-    final durationMonths = booking['duration_months'] as int? ?? 1;
+    // Jika data backend belum ada tapi user sudah resident,
+    // tetap tampilkan tombol dengan bookingId null (akan disabled gracefully)
+    final isResident = widget.auth.isResident;
+    if ((booking == null || booking.isEmpty) && !isResident) {
+      return const SizedBox.shrink();
+    }
+
+    final endDate = booking?['end_date'] as String?;
+    final durationMonths = booking?['duration_months'] as int? ?? 1;
     final isRenewalRequested =
-        booking['is_renewal_requested'] as bool? ?? false;
-    final bookingId = booking['id'] as int?;
+        booking?['is_renewal_requested'] as bool? ?? false;
+    final bookingId = booking?['id'] as int?;
     final expiringSoon = _isExpiringSoon(endDate);
 
     return Column(
@@ -1728,7 +1732,7 @@ class _BookingDurationSectionState extends State<_BookingDurationSection> {
               ],
             ),
           )
-        else if (bookingId != null && (expiringSoon || endDate == null))
+        else if (bookingId != null)
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
