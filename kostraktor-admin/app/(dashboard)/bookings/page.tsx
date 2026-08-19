@@ -14,6 +14,7 @@ export default function BookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+  const [filter, setFilter] = useState<string>("PENDING");
 
   function showToast(msg: string, ok = true) {
     setToast({ msg, ok });
@@ -23,7 +24,7 @@ export default function BookingsPage() {
   async function loadBookings() {
     setLoading(true);
     try {
-      const res = await fetch("/api/proxy?path=%2Fbookings%2Fpending");
+      const res = await fetch("/api/proxy?path=%2Fbookings%2Fall");
       if (res.ok) setBookings(await res.json());
     } finally {
       setLoading(false);
@@ -47,6 +48,8 @@ export default function BookingsPage() {
     }
   }
 
+  const filteredBookings = bookings.filter(b => filter === "ALL" || b.status === filter);
+
   return (
     <div className="space-y-6">
       {toast && (
@@ -55,19 +58,31 @@ export default function BookingsPage() {
         </div>
       )}
 
-      <div>
-        <h1 className="text-xl font-bold text-brand-black">Kelola Booking</h1>
-        <p className="text-brand-muted text-sm mt-0.5">{bookings.length} booking pending menunggu persetujuan</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-brand-black">Kelola Booking</h1>
+          <p className="text-brand-muted text-sm mt-0.5">{filteredBookings.length} booking ditampilkan</p>
+        </div>
+        <select
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          className="bg-brand-surface border border-gray-200 rounded-xl px-4 py-2 text-sm text-brand-black focus:outline-none focus:ring-2 focus:ring-brand-black/20"
+        >
+          <option value="ALL">Semua Status</option>
+          <option value="PENDING">Pending</option>
+          <option value="APPROVED">Disetujui</option>
+          <option value="REJECTED">Ditolak</option>
+        </select>
       </div>
 
       <div className="bg-brand-surface border border-gray-200 rounded-2xl overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-20 text-brand-muted">Memuat data...</div>
-        ) : bookings.length === 0 ? (
+        ) : filteredBookings.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-4xl mb-3">✅</p>
-            <p className="text-brand-black font-medium">Tidak ada booking pending</p>
-            <p className="text-brand-muted text-sm mt-1">Semua booking sudah diproses</p>
+            <p className="text-brand-black font-medium">Tidak ada booking {filter !== "ALL" ? filter.toLowerCase() : ""}</p>
+            <p className="text-brand-muted text-sm mt-1">Data kosong</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -80,7 +95,7 @@ export default function BookingsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {bookings.map((b) => (
+                {filteredBookings.map((b) => (
                   <tr key={b.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-5 py-4 text-brand-muted font-mono text-xs">#{b.id}</td>
                     <td className="px-5 py-4 text-brand-black font-medium">{b.user_name || "—"}</td>

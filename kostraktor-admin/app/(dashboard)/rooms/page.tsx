@@ -150,6 +150,15 @@ function RoomFormDialog({ initial, onSave, onClose }: RoomFormProps) {
             </label>
             <div
               onClick={() => fileRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+              onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                  setFiles(e.dataTransfer.files);
+                }
+              }}
               className="border-2 border-dashed border-gray-300 hover:border-brand-black rounded-xl p-4 text-center cursor-pointer transition-colors"
             >
               <p className="text-brand-muted text-sm">
@@ -534,71 +543,69 @@ function RoomDetailDialog({ room, onClose }: { room: Room; onClose: () => void }
                     </div>
 
                     {/* Foto KTP & Selfie */}
-                    {(tenant.ktp_image_url || tenant.selfie_image_url) && (
-                      <div>
-                        <p className="text-xs font-semibold text-brand-muted uppercase tracking-wide mb-2">Dokumen Verifikasi</p>
-                        <div className="grid grid-cols-2 gap-3">
-                          {tenant.ktp_image_url ? (
-                            <button
-                              onClick={() => setLightbox({ src: tenant.ktp_image_url!, label: "Foto KTP" })}
-                              className="group relative aspect-[3/2] rounded-xl overflow-hidden bg-gray-100 border-2 border-dashed border-gray-300 hover:border-brand-black transition-colors"
-                              title="Klik untuk perbesar"
-                            >
-                              <Image
-                                src={resolveMediaUrl(tenant.ktp_image_url)}
-                                alt="Foto KTP"
-                                fill
-                                className="object-cover group-hover:opacity-90 transition-opacity"
-                                sizes="200px"
-                                unoptimized
-                              />
-                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-end justify-center pb-2">
-                                <span className="text-white text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 px-2 py-0.5 rounded-full">
-                                  🔍 Perbesar
-                                </span>
-                              </div>
-                              <div className="absolute top-1.5 left-1.5 bg-black/60 text-white text-[10px] font-medium px-1.5 py-0.5 rounded-md">
-                                KTP
-                              </div>
-                            </button>
-                          ) : (
-                            <div className="aspect-[3/2] rounded-xl bg-gray-100 border-2 border-dashed border-gray-200 flex items-center justify-center">
-                              <span className="text-brand-muted text-xs">Foto KTP tidak ada</span>
+                    <div>
+                      <p className="text-xs font-semibold text-brand-muted uppercase tracking-wide mb-2">Dokumen Verifikasi</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        {tenant.ktp_image_url ? (
+                          <button
+                            onClick={() => setLightbox({ src: tenant.ktp_image_url!, label: "Foto KTP" })}
+                            className="group relative aspect-[3/2] rounded-xl overflow-hidden bg-gray-100 border-2 border-dashed border-gray-300 hover:border-brand-black transition-colors"
+                            title="Klik untuk perbesar"
+                          >
+                            <Image
+                              src={resolveMediaUrl(tenant.ktp_image_url)}
+                              alt="Foto KTP"
+                              fill
+                              className="object-cover group-hover:opacity-90 transition-opacity"
+                              sizes="200px"
+                              unoptimized
+                            />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-end justify-center pb-2">
+                              <span className="text-white text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 px-2 py-0.5 rounded-full">
+                                🔍 Perbesar
+                              </span>
                             </div>
-                          )}
+                            <div className="absolute top-1.5 left-1.5 bg-black/60 text-white text-[10px] font-medium px-1.5 py-0.5 rounded-md">
+                              KTP
+                            </div>
+                          </button>
+                        ) : (
+                          <div className="aspect-[3/2] rounded-xl bg-gray-100 border-2 border-dashed border-gray-200 flex items-center justify-center">
+                            <span className="text-brand-muted text-xs">Foto KTP tidak ada</span>
+                          </div>
+                        )}
 
-                          {tenant.selfie_image_url ? (
-                            <button
-                              onClick={() => setLightbox({ src: tenant.selfie_image_url!, label: "Foto Selfie" })}
-                              className="group relative aspect-[3/2] rounded-xl overflow-hidden bg-gray-100 border-2 border-dashed border-gray-300 hover:border-brand-black transition-colors"
-                              title="Klik untuk perbesar"
-                            >
-                              <Image
-                                src={resolveMediaUrl(tenant.selfie_image_url)}
-                                alt="Foto Selfie"
-                                fill
-                                className="object-cover group-hover:opacity-90 transition-opacity"
-                                sizes="200px"
-                                unoptimized
-                              />
-                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-end justify-center pb-2">
-                                <span className="text-white text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 px-2 py-0.5 rounded-full">
-                                  🔍 Perbesar
-                                </span>
-                              </div>
-                              <div className="absolute top-1.5 left-1.5 bg-black/60 text-white text-[10px] font-medium px-1.5 py-0.5 rounded-md">
-                                Selfie
-                              </div>
-                            </button>
-                          ) : (
-                            <div className="aspect-[3/2] rounded-xl bg-gray-100 border-2 border-dashed border-gray-200 flex items-center justify-center">
-                              <span className="text-brand-muted text-xs">Foto selfie tidak ada</span>
+                        {tenant.selfie_image_url ? (
+                          <button
+                            onClick={() => setLightbox({ src: tenant.selfie_image_url!, label: "Foto Selfie" })}
+                            className="group relative aspect-[3/2] rounded-xl overflow-hidden bg-gray-100 border-2 border-dashed border-gray-300 hover:border-brand-black transition-colors"
+                            title="Klik untuk perbesar"
+                          >
+                            <Image
+                              src={resolveMediaUrl(tenant.selfie_image_url)}
+                              alt="Foto Selfie"
+                              fill
+                              className="object-cover group-hover:opacity-90 transition-opacity"
+                              sizes="200px"
+                              unoptimized
+                            />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-end justify-center pb-2">
+                              <span className="text-white text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 px-2 py-0.5 rounded-full">
+                                🔍 Perbesar
+                              </span>
                             </div>
-                          )}
-                        </div>
-                        <p className="text-brand-muted text-xs mt-2">Klik foto untuk memperbesar</p>
+                            <div className="absolute top-1.5 left-1.5 bg-black/60 text-white text-[10px] font-medium px-1.5 py-0.5 rounded-md">
+                              Selfie
+                            </div>
+                          </button>
+                        ) : (
+                          <div className="aspect-[3/2] rounded-xl bg-gray-100 border-2 border-dashed border-gray-200 flex items-center justify-center">
+                            <span className="text-brand-muted text-xs">Foto selfie tidak ada</span>
+                          </div>
+                        )}
                       </div>
-                    )}
+                      <p className="text-brand-muted text-xs mt-2">Klik foto untuk memperbesar</p>
+                    </div>
                   </>
                 )}
               </div>
