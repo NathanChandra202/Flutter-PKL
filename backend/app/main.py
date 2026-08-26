@@ -1,5 +1,6 @@
 # pyrefly: ignore [missing-import]
 import os
+import threading
 from fastapi import FastAPI
 # pyrefly: ignore [missing-import]
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,6 +14,43 @@ from app.db.session import engine
 
 # Create tables
 Base.metadata.create_all(bind=engine)
+
+def _preload_models():
+    """
+    Pre-load DeepFace AI models (VGG-Face + RetinaFace) in a background thread
+    saat server pertama nyala. Tujuannya agar request verifikasi pertama
+    dari user tidak kena 'cold start' (loading model yang bisa makan 60-120 detik).
+    """
+    try:
+        import numpy as np
+        from deepface import DeepFace
+        print("[STARTUP] Pre-loading DeepFace models... (ini bisa 60-120 detik pertama kali)")
+        
+        # Buat dummy 1x1 pixel image agar DeepFace download & cache model-nya
+        dummy = np.zeros((224, 224, 3), dtype=np.uint8)
+        import tempfile, cv2
+        tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
+        cv2.imwrite(tmp.name, dummy)
+        tmp.close()
+        
+        try:
+            # Panggil verify dgn enforce_detection=False agar tidak error meski gambar kosong
+            DeepFace.verify(
+                img1_path=tmp.name,
+                img2_path=tmp.name,
+                model_name="VGG-Face",
+                distance_metric="cosine",
+                enforce_detection=False,
+                detector_backend="skip",
+            )
+        except Exception:
+            pass  # Hasil tidak penting, yang penting model sudah ter-load ke cache
+        finally:
+            os.remove(tmp.name)
+        
+        print("[STARTUP] ✅ DeepFace models pre-loaded. Server siap untuk verifikasi wajah.")
+    except Exception as e:
+        print(f"[STARTUP] ⚠️ Model pre-load gagal (tidak masalah, akan load saat request pertama): {e}")
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
@@ -40,6 +78,12 @@ os.makedirs("uploads/bookings", exist_ok=True)
 os.makedirs("uploads/reports", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
+
+@app.on_event("startup")
+def on_startup():
+    # Jalankan pre-load di background thread agar server tidak nge-block saat nyala
+    thread = threading.Thread(target=_preload_models, daemon=True)
+    thread.start()
 
 @app.get("/")
 def read_root():

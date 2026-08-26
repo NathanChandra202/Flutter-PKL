@@ -569,12 +569,18 @@ class AuthProvider extends ChangeNotifier {
         ),
       );
 
-      final streamedResponse = await request.send().timeout(
-        const Duration(seconds: 90), // AI models can be slow on first load
-        onTimeout: () =>
-            throw Exception('Request timeout — server terlalu lama merespons.'),
-      );
-      final response = await http.Response.fromStream(streamedResponse);
+      // Timeout 180s — model AI (VGG-Face + RetinaFace) butuh waktu loading,
+      // terutama saat server baru nyala (cold start).
+      // Kita wrap seluruh send() + fromStream() dalam satu timeout besar.
+      final response = await Future.value(request.send())
+          .then((streamed) => http.Response.fromStream(streamed))
+          .timeout(
+            const Duration(seconds: 180),
+            onTimeout: () => throw Exception(
+              'Request timeout — model AI butuh lebih dari 3 menit. '
+              'Ini biasanya terjadi saat server baru nyala. Coba lagi dalam beberapa saat.',
+            ),
+          );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body) as Map<String, dynamic>;
