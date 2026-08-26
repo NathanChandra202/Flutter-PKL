@@ -60,6 +60,19 @@ def create_report(report_in: ReportCreate, db: Session = Depends(deps.get_db),
     db.add(report)
     db.commit()
     db.refresh(report)
+
+    # Trigger WA Notification (Simulasi/Bot)
+    from app.services.wa_service import send_wa_notification
+    wa_msg = (
+        f"*[Laporan Baru]*\n"
+        f"Kategori: {report.category or 'Umum'}\n"
+        f"Fasilitas/Masalah: {report.title}\n"
+        f"Deskripsi: {report.description}\n"
+        f"Status: Menunggu penanganan"
+    )
+    # The message is sent to the channel target, keeping the reporter's identity anonymous
+    send_wa_notification(wa_msg, target="kost_channel")
+
     return _to_response(report)
 
 @router.post("/{report_id}/upload-photo")
@@ -116,4 +129,16 @@ def respond_report(report_id: int, update: ReportUpdate, db: Session = Depends(d
         report.resolved_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(report)
+
+    # Trigger WA Notification for Update (Simulasi/Bot)
+    from app.services.wa_service import send_wa_notification
+    status_ind = "✅ Selesai Diperbaiki" if update.status == "RESOLVED" else "Diproses"
+    wa_msg = (
+        f"*[Update Laporan]*\n"
+        f"Fasilitas: {report.title}\n"
+        f"Status Terbaru: {status_ind}\n"
+        f"Tanggapan Admin: {report.admin_response or '-'}\n"
+    )
+    send_wa_notification(wa_msg, target="kost_channel")
+
     return _to_response(report)
