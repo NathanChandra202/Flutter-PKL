@@ -1507,6 +1507,16 @@ class _BookingDurationSectionState extends State<_BookingDurationSection> {
     return d.difference(DateTime.now()).inDays <= 30;
   }
 
+  bool _canRequestRenewal(String? iso) {
+    // Tombol perpanjangan muncul jika masa huni tinggal 7 hari atau kurang
+    if (iso == null) return false;
+    final d = DateTime.tryParse(iso);
+    if (d == null) return false;
+    final daysLeft = d.difference(DateTime.now()).inDays;
+    return daysLeft <= 7 &&
+        daysLeft >= 0; // 7 hari atau kurang, tapi belum lewat
+  }
+
   Future<void> _showRenewalDialog(int bookingId) async {
     int selectedMonths = 1;
     await showDialog(
@@ -1636,6 +1646,7 @@ class _BookingDurationSectionState extends State<_BookingDurationSection> {
         booking?['is_renewal_requested'] as bool? ?? false;
     final bookingId = booking?['id'] as int?;
     final expiringSoon = _isExpiringSoon(endDate);
+    final canRequestRenewal = _canRequestRenewal(endDate);
 
     return Column(
       children: [
@@ -1709,60 +1720,62 @@ class _BookingDurationSectionState extends State<_BookingDurationSection> {
           ),
         ],
 
-        // Status perpanjangan / tombol ajukan
-        const SizedBox(height: 14),
-        if (isRenewalRequested)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.amber.shade50,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.amber.shade300),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.pending, color: Colors.amber.shade700, size: 18),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    'Menunggu persetujuan perpanjangan dari admin',
-                    style: TextStyle(fontSize: 12),
+        // Status perpanjangan / tombol ajukan (hanya muncul jika <= 7 hari)
+        if (canRequestRenewal || isRenewalRequested) ...[
+          const SizedBox(height: 14),
+          if (isRenewalRequested)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.amber.shade300),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.pending, color: Colors.amber.shade700, size: 18),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Menunggu persetujuan perpanjangan dari admin',
+                      style: TextStyle(fontSize: 12),
+                    ),
                   ),
-                ),
-              ],
-            ),
-          )
-        else if (bookingId != null)
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppTheme.primaryBlack,
-                side: const BorderSide(color: AppTheme.primaryBlack),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                ],
               ),
-              icon: _submitting
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppTheme.primaryBlack,
-                      ),
-                    )
-                  : const Icon(Icons.autorenew, size: 18),
-              label: Text(
-                _submitting ? 'Mengirim...' : 'Ajukan Perpanjangan Sewa',
-                style: const TextStyle(fontWeight: FontWeight.w600),
+            )
+          else if (bookingId != null)
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.primaryBlack,
+                  side: const BorderSide(color: AppTheme.primaryBlack),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                icon: _submitting
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppTheme.primaryBlack,
+                        ),
+                      )
+                    : const Icon(Icons.autorenew, size: 18),
+                label: Text(
+                  _submitting ? 'Mengirim...' : 'Ajukan Perpanjangan Sewa',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                onPressed: _submitting
+                    ? null
+                    : () => _showRenewalDialog(bookingId),
               ),
-              onPressed: _submitting
-                  ? null
-                  : () => _showRenewalDialog(bookingId),
             ),
-          ),
+        ],
       ],
     );
   }
