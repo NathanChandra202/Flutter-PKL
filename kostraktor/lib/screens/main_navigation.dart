@@ -1,9 +1,10 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/auth_provider.dart';
 import '../utils/app_theme.dart';
-
 import 'home_screen.dart';
 import 'jastip_screen.dart';
 import 'lapor_screen.dart';
@@ -38,8 +39,114 @@ class _MainNavigationState extends State<MainNavigation>
       _refreshStatus();
       _startPollingIfPending();
       _listenForApproval();
+      _maybeShowWaChannelPopup();
     });
   }
+
+  /// Tampilkan pop-up join Saluran WA hanya sekali saat user baru jadi resident.
+  Future<void> _maybeShowWaChannelPopup() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (!auth.isResident) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final key = 'wa_channel_popup_shown_${auth.userEmail}';
+    final alreadyShown = prefs.getBool(key) ?? false;
+    if (alreadyShown) return;
+
+    // Tandai sudah pernah ditampilkan sebelum show dialog
+    await prefs.setBool(key, true);
+
+    if (!mounted) return;
+    _showWaChannelPopup();
+  }
+
+  void _showWaChannelPopup() {
+    // TODO: ganti link ini dengan link Saluran WA yang asli dari settings admin
+    const waChannelUrl = 'https://whatsapp.com/channel/dummy_link_here';
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Icon
+              Container(
+                width: 72,
+                height: 72,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF25D366),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.campaign_rounded, color: Colors.white, size: 36),
+              ),
+              const SizedBox(height: 20),
+
+              // Title
+              const Text(
+                'Selamat Datang, Penghuni! 🎉',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.primaryBlack,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 10),
+
+              // Body
+              const Text(
+                'Kamu sudah resmi jadi penghuni kost kami!\n\n'
+                'Gabung ke Saluran WhatsApp kost untuk dapat update fasilitas, pengumuman, dan laporan kerusakan secara transparan.',
+                style: TextStyle(fontSize: 13, color: AppTheme.textMuted, height: 1.5),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+
+              // Tombol Gabung
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF25D366),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  icon: const Icon(Icons.open_in_new, size: 18),
+                  label: const Text('Gabung Saluran WA', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  onPressed: () async {
+                    Navigator.of(ctx).pop();
+                    final url = Uri.parse(waChannelUrl);
+                    if (await canLaunchUrl(url)) {
+                      await launchUrl(url, mode: LaunchMode.externalApplication);
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // Tombol Nanti
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text(
+                  'Nanti Aja',
+                  style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
 
   @override
   void dispose() {

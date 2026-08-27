@@ -63,8 +63,10 @@ def create_report(report_in: ReportCreate, db: Session = Depends(deps.get_db),
 
     # Trigger WA Notification (Simulasi/Bot)
     from app.services.wa_service import send_wa_notification
+    room_name = current_user.current_room.name if current_user.current_room else "Tidak diketahui"
     wa_msg = (
         f"*[Laporan Baru]*\n"
+        f"Kamar: {room_name}\n"
         f"Kategori: {report.category or 'Umum'}\n"
         f"Fasilitas/Masalah: {report.title}\n"
         f"Deskripsi: {report.description}\n"

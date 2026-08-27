@@ -151,7 +151,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
 
             // Booking Info for pending/resident
-            if (auth.bookingData != null) ...[
+            if (auth.bookingData != null || (auth.isResident && _myBookings.isNotEmpty)) ...[
               const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.all(20),
@@ -172,10 +172,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
+                    
+                    // Display Unit/Location
                     _infoRow(
                       Icons.apartment_outlined,
                       'Unit',
-                      auth.bookingData!.roomType,
+                      auth.bookingData?.roomType ?? (_myBookings.isNotEmpty ? _myBookings.first['room_name'] ?? 'Kamar Kost' : 'Kamar Kost'),
                     ),
                     const SizedBox(height: 10),
                     _infoRow(
@@ -191,18 +193,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         auth.assignedRoom!,
                       ),
                     ],
+                    
+                    // Display Booking Dates
                     const SizedBox(height: 10),
                     _infoRow(
                       Icons.calendar_today_outlined,
                       'Tanggal Booking',
-                      '${auth.bookingData!.bookingTime.day}/${auth.bookingData!.bookingTime.month}/${auth.bookingData!.bookingTime.year}',
+                      auth.bookingData != null 
+                          ? '${auth.bookingData!.bookingTime.day}/${auth.bookingData!.bookingTime.month}/${auth.bookingData!.bookingTime.year}'
+                          : (_myBookings.isNotEmpty ? _formatTanggal(DateTime.parse(_myBookings.first['booking_date'])) : '-'),
                     ),
-                    if (auth.bookingData!.tanggalMulaiMenghuni != null) ...[
+                    
+                    if (auth.bookingData?.tanggalMulaiMenghuni != null || (_myBookings.isNotEmpty && _myBookings.first['start_date'] != null)) ...[
                       const SizedBox(height: 10),
                       _infoRow(
                         Icons.calendar_month,
                         'Mulai Menghuni',
-                        _formatTanggal(auth.bookingData!.tanggalMulaiMenghuni!),
+                        auth.bookingData?.tanggalMulaiMenghuni != null 
+                            ? _formatTanggal(auth.bookingData!.tanggalMulaiMenghuni!)
+                            : _formatTanggal(DateTime.parse(_myBookings.first['start_date'])),
                       ),
                     ],
                     // Durasi & tanggal selesai dari backend
