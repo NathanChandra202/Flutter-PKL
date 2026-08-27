@@ -61,8 +61,7 @@ class _MainNavigationState extends State<MainNavigation>
   }
 
   void _showWaChannelPopup() {
-    // TODO: ganti link ini dengan link Saluran WA yang asli dari settings admin
-    const waChannelUrl = 'https://whatsapp.com/channel/dummy_link_here';
+    const waChannelUrl = 'https://whatsapp.com/channel/0029Vb8zTM46RGJP43usFe1L';
 
     showDialog(
       context: context,
