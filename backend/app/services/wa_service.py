@@ -1,22 +1,34 @@
-import logging
+import requests
 
 logger = logging.getLogger(__name__)
 
+# TARUH TOKEN FONNTE KAMU DI SINI:
+FONNTE_TOKEN = "m4iuPPzJw7EfYA8uySSq"
+
 def send_wa_notification(message: str, target: str = "kost_channel"):
     """
-    Simulates sending a WhatsApp notification to a WhatsApp Channel (Saluran).
-    In production, you can replace this with Fonnte, Watzap, or Meta Graph API integration.
+    Mengirim pesan WA via Fonnte API
     """
-    # TODO: Implement real WA API call (e.g. Fonnte)
-    # import requests
-    # url = "https://api.fonnte.com/send"
-    # headers = {"Authorization": "YOUR_TOKEN_HERE"}
-    # data = {"target": target, "message": message}
-    # try:
-    #     requests.post(url, headers=headers, data=data)
-    # except Exception as e:
-    #     logger.error(f"Error sending WA notification: {e}")
+    if FONNTE_TOKEN == "TOKEN_FONNTE_KAMU_DISINI":
+        logger.info(f"[WA_BOT_SIMULATION] (Token Fonnte belum diisi). Target: {target} | Msg: {message}")
+        print(f"\n{'='*40}\n[WA SIMULASI]\nTarget: {target}\nMessage:\n{message}\n{'='*40}\n")
+        return True
+
+    url = "https://api.fonnte.com/send"
+    headers = {
+        "Authorization": FONNTE_TOKEN
+    }
+    data = {
+        "target": target, # Nomor tujuan atau ID Grup WA
+        "message": message,
+        "countryCode": "62" # Format Indonesia
+    }
     
-    logger.info(f"[WA_BOT_SIMULATION] Sending to {target}: {message}")
-    print(f"\n{'='*40}\n[WA NOTIFICATION SENT]\nTarget: {target}\nMessage:\n{message}\n{'='*40}\n")
-    return True
+    try:
+        response = requests.post(url, headers=headers, data=data)
+        result = response.json()
+        logger.info(f"Fonnte Response: {result}")
+        return True
+    except Exception as e:
+        logger.error(f"Error sending WA notification via Fonnte: {e}")
+        return False

@@ -72,8 +72,8 @@ def create_report(report_in: ReportCreate, db: Session = Depends(deps.get_db),
         f"Deskripsi: {report.description}\n"
         f"Status: Menunggu penanganan"
     )
-    # The message is sent to the channel target, keeping the reporter's identity anonymous
-    send_wa_notification(wa_msg, target="kost_channel")
+    # The message is sent to the target, keeping the reporter's identity anonymous
+    send_wa_notification(wa_msg, target="087812122074")
 
     return _to_response(report)
 
@@ -141,6 +141,6 @@ def respond_report(report_id: int, update: ReportUpdate, db: Session = Depends(d
         f"Status Terbaru: {status_ind}\n"
         f"Tanggapan Admin: {report.admin_response or '-'}\n"
     )
-    send_wa_notification(wa_msg, target="kost_channel")
+    send_wa_notification(wa_msg, target="087812122074")
 
     return _to_response(report)
