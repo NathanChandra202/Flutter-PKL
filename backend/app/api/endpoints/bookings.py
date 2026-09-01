@@ -283,3 +283,36 @@ def approve_renewal(
         "new_end_date": booking.end_date.isoformat(),
         "duration_months": booking.duration_months,
     }
+
+
+@router.post("/checkout")
+def checkout(
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_active_user),
+):
+    """User melakukan check out — melepas kamar dan mereset status booking."""
+    # Cari booking aktif milik user ini
+    booking = (
+        db.query(Booking)
+        .filter(Booking.user_id == current_user.id, Booking.status == "APPROVED")
+        .order_by(Booking.id.desc())
+        .first()
+    )
+    if not booking:
+        raise HTTPException(status_code=404, detail="Tidak ada booking aktif yang ditemukan")
+
+    room = booking.room
+
+    # Ubah status booking → CHECKED_OUT
+    booking.status = "CHECKED_OUT"
+
+    # Bebaskan kamar kembali
+    if room:
+        room.is_available = True
+
+    # Lepas relasi user dengan kamar
+    current_user.current_room_id = None
+
+    db.commit()
+    return {"message": "Check out berhasil. Kamar telah dibebaskan.", "booking_id": booking.id}
+

@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:math';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -1139,7 +1139,25 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// Check out — reverts an active resident back to calon status
-  void checkOut() {
+  Future<void> checkOut() async {
+    // Panggil backend untuk melepas kamar dan reset booking
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/bookings/checkout'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_accessToken',
+        },
+      );
+      if (response.statusCode != 200) {
+        debugPrint('[CheckOut] Backend error: ${response.body}');
+      } else {
+        debugPrint('[CheckOut] Backend checkout success');
+      }
+    } catch (e) {
+      debugPrint('[CheckOut] Network error: $e');
+    }
+
     // Release the unique payment code back to the pool if there's an active booking
     if (_bookingData != null) {
       releaseUniquePaymentCode(_bookingData!.uniquePaymentCode);

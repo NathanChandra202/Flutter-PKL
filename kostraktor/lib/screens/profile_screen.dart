@@ -1048,7 +1048,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               reasonController.dispose();
               Navigator.pop(ctx);
               // Perform check out
-              auth.checkOut();
+              await auth.checkOut();
               // Show snackbar then navigate to login
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
