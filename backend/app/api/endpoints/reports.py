@@ -73,7 +73,7 @@ def create_report(report_in: ReportCreate, db: Session = Depends(deps.get_db),
         f"Status: Menunggu penanganan"
     )
     # The message is sent to the target, keeping the reporter's identity anonymous
-    send_wa_notification(wa_msg, target="087812122074")
+    send_wa_notification(wa_msg, target="120363411504991593@g.us")
 
     return _to_response(report)
 
@@ -141,6 +141,6 @@ def respond_report(report_id: int, update: ReportUpdate, db: Session = Depends(d
         f"Status Terbaru: {status_ind}\n"
         f"Tanggapan Admin: {report.admin_response or '-'}\n"
     )
-    send_wa_notification(wa_msg, target="087812122074")
+    send_wa_notification(wa_msg, target="120363411504991593@g.us")
 
     return _to_response(report)
