@@ -1044,7 +1044,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            onPressed: () {
+            onPressed: () async {
               reasonController.dispose();
               Navigator.pop(ctx);
               // Perform check out
