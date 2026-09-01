@@ -3,10 +3,13 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-# TARUH API KEY & SESSION ID VENUSVERSE KAMU DI SINI:
-VENUSVERSE_API_KEY = "c74dbf4cb60e477c98cad3c9fe07cabcaf38677f0a504621ae368a0746736b10"
-VENUSVERSE_SESSION_ID = "testing-bot "
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
+
+VENUSVERSE_API_KEY = os.getenv("VENUSVERSE_API_KEY", "")
+VENUSVERSE_SESSION_ID = os.getenv("VENUSVERSE_SESSION_ID", "")
 def send_wa_notification(message: str, target: str = "kost_channel"):
     """
     Mengirim pesan WA via VenusVerse API
