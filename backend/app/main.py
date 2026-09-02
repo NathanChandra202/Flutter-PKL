@@ -9,8 +9,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
 from app.api.endpoints import auth, verify, rooms, bookings, jastip, tools, reviews, reports
+from app.api.endpoints import settings as settings_router
 from app.models.base import Base
 from app.models.report import Report  # Import to register the model
+from app.models.setting import Setting
 from app.db.session import engine
 
 # Create tables
@@ -71,6 +73,7 @@ app.include_router(jastip.router, prefix=f"{settings.API_V1_STR}/jastip", tags=[
 app.include_router(tools.router, prefix=f"{settings.API_V1_STR}/tools", tags=["tools"])
 app.include_router(reviews.router, prefix=f"{settings.API_V1_STR}/reviews", tags=["reviews"])
 app.include_router(reports.router, prefix=f"{settings.API_V1_STR}/reports", tags=["reports"])
+app.include_router(settings_router.router, prefix=f"{settings.API_V1_STR}/settings", tags=["settings"])
 
 os.makedirs("uploads/rooms", exist_ok=True)
 os.makedirs("uploads/ktp", exist_ok=True)

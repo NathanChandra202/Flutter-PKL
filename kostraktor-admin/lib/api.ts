@@ -195,3 +195,24 @@ export interface Review {
 export async function getReviewsApi(token: string): Promise<Review[]> {
   return apiFetch<Review[]>("/reviews/", { token });
 }
+
+// ─── Settings ─────────────────────────────────────────────────────────────────
+export interface Setting {
+  id: number;
+  key: string;
+  value: string;
+}
+
+export async function getSettingApi(token: string, key: string): Promise<Setting> {
+  return apiFetch<Setting>(`/settings/${key}`, { token });
+}
+
+export async function updateSettingApi(token: string, key: string, value: string): Promise<Setting> {
+  return apiFetch<Setting>(`/settings/${key}`, { 
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ value }),
+    token 
+  });
+}
+

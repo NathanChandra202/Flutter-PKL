@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Settings as SettingsIcon } from "lucide-react";
+import { getSettingApi, updateSettingApi, getToken } from "@/lib/api";
 
 export default function SettingsPage() {
   const [waLink, setWaLink] = useState("");
@@ -15,14 +16,12 @@ export default function SettingsPage() {
   }
 
   useEffect(() => {
-    // Simulasi fetch data dari backend (TODO: ganti dengan pemanggilan API sungguhan)
     const loadSettings = async () => {
       setLoading(true);
       try {
-        // Simulasi network delay
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        // Untuk sementara, kita mock nilai link-nya
-        setWaLink(""); 
+        const token = getToken() || "";
+        const setting = await getSettingApi(token, "wa_group_link");
+        setWaLink(setting?.value || "");
       } catch (err) {
         showToast("Gagal memuat pengaturan", false);
       } finally {
@@ -37,8 +36,8 @@ export default function SettingsPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      // Simulasi update data ke backend (TODO: integrasi API sungguhan `/settings`)
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      const token = getToken() || "";
+      await updateSettingApi(token, "wa_group_link", waLink);
       showToast("Pengaturan berhasil disimpan!");
     } catch (err) {
       showToast("Gagal menyimpan pengaturan", false);

@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -57,10 +59,10 @@ class _MainNavigationState extends State<MainNavigation>
     await prefs.setBool(key, true);
 
     if (!mounted) return;
-    _showWaChannelPopup();
+    _showWaChannelPopup(auth);
   }
 
-  void _showWaChannelPopup() {
+  void _showWaChannelPopup(AuthProvider auth) {
     const waChannelUrl = 'https://whatsapp.com/channel/0029Vb8zTM46RGJP43usFe1L';
 
     showDialog(
@@ -121,8 +123,31 @@ class _MainNavigationState extends State<MainNavigation>
                   icon: const Icon(Icons.open_in_new, size: 18),
                   label: const Text('Gabung Grup WA', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                   onPressed: () async {
-                    Navigator.of(ctx).pop();
-                    final url = Uri.parse(waChannelUrl);
+                    // Show a simple loading indicator dialog
+                    showDialog(
+                      context: ctx,
+                      barrierDismissible: false,
+                      builder: (c) => const Center(child: CircularProgressIndicator()),
+                    );
+                    
+                    String targetUrl = waChannelUrl;
+                    try {
+                      final uri = Uri.parse('${auth.baseUrl}/settings/wa_group_link');
+                      final res = await http.get(uri);
+                      if (res.statusCode == 200) {
+                        final data = jsonDecode(res.body);
+                        if (data['value'] != null && data['value'].toString().trim().isNotEmpty) {
+                          targetUrl = data['value'].toString().trim();
+                        }
+                      }
+                    } catch (e) {
+                      // ignore error, fallback to default
+                    }
+                    
+                    Navigator.of(ctx).pop(); // pop loading
+                    Navigator.of(ctx).pop(); // pop popup
+                    
+                    final url = Uri.parse(targetUrl);
                     if (await canLaunchUrl(url)) {
                       await launchUrl(url, mode: LaunchMode.externalApplication);
                     }
