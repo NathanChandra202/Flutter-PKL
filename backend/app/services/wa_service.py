@@ -1,5 +1,6 @@
 import logging
 import requests
+import urllib.parse
 
 logger = logging.getLogger(__name__)
 
@@ -19,9 +20,10 @@ def send_wa_notification(message: str, target: str = "kost_channel"):
         print(f"\n{'='*40}\n[WA SIMULASI]\nTarget: {target}\nMessage:\n{message}\n{'='*40}\n")
         return True
 
-    url = f"https://whatsapp.venusverse.me/api/session/{VENUSVERSE_SESSION_ID}/send"
+    session_id_safe = urllib.parse.quote(VENUSVERSE_SESSION_ID.strip())
+    url = f"https://whatsapp.venusverse.me/api/session/{session_id_safe}/send"
     headers = {
-        "x-api-key": VENUSVERSE_API_KEY,
+        "x-api-key": VENUSVERSE_API_KEY.strip(),
         "Content-Type": "application/json"
     }
     data = {
@@ -30,10 +32,17 @@ def send_wa_notification(message: str, target: str = "kost_channel"):
     }
     
     try:
-        response = requests.post(url, headers=headers, json=data)
+        response = requests.post(url, headers=headers, json=data, timeout=10)
+        # Parse JSON manually to avoid exceptions on non-JSON error pages
+        if response.status_code != 200:
+            logger.error(f"[WA_BOT] Failed to send message. HTTP {response.status_code}: {response.text}")
+            print(f"WA API ERROR: {response.text}")
+            return False
+            
         result = response.json()
         logger.info(f"VenusVerse Response: {result}")
         return True
     except Exception as e:
         logger.error(f"Error sending WA notification via VenusVerse: {e}")
+        print(f"WA EXCEPTION: {e}")
         return False

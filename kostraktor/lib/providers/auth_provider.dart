@@ -157,6 +157,8 @@ class AuthProvider extends ChangeNotifier {
     return AppEnv.isProd ? _prodDefaultBaseUrl : _devDefaultBaseUrl;
   }
 
+  String get baseUrl => _baseUrl;
+
   // Simulated user database (for registration)
   final Map<String, Map<String, String>> _registeredUsers = {
     'calon@kostraktor.com': {

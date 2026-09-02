@@ -57,13 +57,14 @@ def create_report(report_in: ReportCreate, db: Session = Depends(deps.get_db),
                    current_user: User = Depends(deps.get_current_active_user)):
     report = Report(user_id=current_user.id, title=report_in.title,
                      description=report_in.description, category=report_in.category)
+    room_name = current_user.current_room.name if current_user.current_room else "Tidak diketahui"
+    
     db.add(report)
     db.commit()
     db.refresh(report)
 
     # Trigger WA Notification (Simulasi/Bot)
     from app.services.wa_service import send_wa_notification
-    room_name = current_user.current_room.name if current_user.current_room else "Tidak diketahui"
     wa_msg = (
         f"*[Laporan Baru]*\n"
         f"Kamar: {room_name}\n"
