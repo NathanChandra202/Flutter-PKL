@@ -20,7 +20,7 @@ def send_wa_notification(message: str, target: str = "kost_channel"):
         print(f"\n{'='*40}\n[WA SIMULASI]\nTarget: {target}\nMessage:\n{message}\n{'='*40}\n")
         return True
 
-    session_id_safe = urllib.parse.quote(VENUSVERSE_SESSION_ID.strip())
+    session_id_safe = urllib.parse.quote(VENUSVERSE_SESSION_ID)
     url = f"https://whatsapp.venusverse.me/api/session/{session_id_safe}/send"
     headers = {
         "x-api-key": VENUSVERSE_API_KEY.strip(),
