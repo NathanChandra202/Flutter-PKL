@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = "kostraktor_id"
     POSTGRES_PORT: str = "5432"
     
+    # VenusVerse WA Bot
+    VENUSVERSE_API_KEY: str = ""
+    VENUSVERSE_SESSION_ID: str = ""
+    
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
@@ -24,5 +28,6 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = True
+        extra = "ignore"
 
 settings = Settings()
