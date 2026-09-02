@@ -14,8 +14,8 @@ def send_wa_notification(message: str, target: str = "kost_channel"):
     """
     Mengirim pesan WA via VenusVerse API
     """
-    if VENUSVERSE_API_KEY == "API_KEY_KAMU_DISINI" or VENUSVERSE_SESSION_ID == "SESSION_ID_KAMU_DISINI":
-        logger.info(f"[WA_BOT_SIMULATION] (API Key VenusVerse belum diisi). Target: {target} | Msg: {message}")
+    if not VENUSVERSE_API_KEY or not VENUSVERSE_SESSION_ID or VENUSVERSE_API_KEY == "API_KEY_KAMU_DISINI":
+        logger.info(f"[WA_BOT_SIMULATION] (API Key VenusVerse belum diisi/tidak ada di .env). Target: {target} | Msg: {message}")
         print(f"\n{'='*40}\n[WA SIMULASI]\nTarget: {target}\nMessage:\n{message}\n{'='*40}\n")
         return True
 

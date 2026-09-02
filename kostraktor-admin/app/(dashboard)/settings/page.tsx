@@ -77,7 +77,7 @@ export default function SettingsPage() {
           <form onSubmit={handleSave} className="p-6 space-y-5">
             <div>
               <label className="text-brand-black text-sm font-medium block mb-1">
-                Link Saluran WhatsApp
+                Link Grup WhatsApp
               </label>
               <input
                 type="url"
@@ -87,7 +87,7 @@ export default function SettingsPage() {
                 className="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-2.5 text-brand-black text-sm focus:outline-none focus:ring-2 focus:ring-brand-black/20 transition-all"
               />
               <p className="text-brand-muted text-xs mt-2 leading-relaxed">
-                Masukkan link Saluran (Channel) WhatsApp Kostraktor. Link ini akan muncul di aplikasi penghuni agar mereka bisa bergabung dan melihat laporan fasilitas.
+                Masukkan link Grup (Group) WhatsApp Kostraktor. Link ini akan muncul di aplikasi penghuni agar mereka bisa bergabung dan melihat laporan fasilitas.
               </p>
             </div>
 

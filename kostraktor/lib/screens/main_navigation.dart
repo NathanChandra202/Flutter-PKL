@@ -43,13 +43,13 @@ class _MainNavigationState extends State<MainNavigation>
     });
   }
 
-  /// Tampilkan pop-up join Saluran WA hanya sekali saat user baru jadi resident.
+  /// Tampilkan pop-up join Grup WA hanya sekali saat user baru jadi resident.
   Future<void> _maybeShowWaChannelPopup() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     if (!auth.isResident) return;
 
     final prefs = await SharedPreferences.getInstance();
-    final key = 'wa_channel_popup_shown_${auth.userEmail}';
+    final key = 'wa_group_popup_shown_${auth.userEmail}';
     final alreadyShown = prefs.getBool(key) ?? false;
     if (alreadyShown) return;
 
@@ -101,7 +101,7 @@ class _MainNavigationState extends State<MainNavigation>
               // Body
               const Text(
                 'Kamu sudah resmi jadi penghuni kost kami!\n\n'
-                'Gabung ke Saluran WhatsApp kost untuk dapat update fasilitas, pengumuman, dan laporan kerusakan secara transparan.',
+                'Gabung ke Grup WhatsApp kost untuk dapat update fasilitas, pengumuman, dan laporan kerusakan secara transparan.',
                 style: TextStyle(fontSize: 13, color: AppTheme.textMuted, height: 1.5),
                 textAlign: TextAlign.center,
               ),
@@ -119,7 +119,7 @@ class _MainNavigationState extends State<MainNavigation>
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                   icon: const Icon(Icons.open_in_new, size: 18),
-                  label: const Text('Gabung Saluran WA', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  label: const Text('Gabung Grup WA', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                   onPressed: () async {
                     Navigator.of(ctx).pop();
                     final url = Uri.parse(waChannelUrl);
