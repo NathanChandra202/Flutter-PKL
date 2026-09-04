@@ -4,7 +4,7 @@ from typing import List, Optional
 from datetime import datetime
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
-from pydantic import BaseModel, ConfigDict, ConfigDict
+from pydantic import BaseModel, ConfigDict
 from dateutil.relativedelta import relativedelta
 
 from app.api import deps
