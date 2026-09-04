@@ -5,7 +5,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, ConfigDict
 
 from app.api import deps
 from app.models.kost import KostRoom
@@ -42,10 +42,7 @@ class RoomUpdate(BaseModel):
 class RoomResponse(RoomBase):
     id: int
 
-    class Config:
-        orm_mode = True
-        from_attributes = True
-
+    model_config = ConfigDict(from_attributes=True)
 @router.get("/", response_model=List[RoomResponse])
 def get_rooms(all: bool = False, db: Session = Depends(deps.get_db)):
     if all:

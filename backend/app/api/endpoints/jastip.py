@@ -2,7 +2,7 @@ from typing import List, Optional
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, ConfigDict
 
 from app.api import deps
 from app.models.community import JastipListing
@@ -27,10 +27,7 @@ class JastipResponse(BaseModel):
     is_active: bool
     created_at: datetime
 
-    class Config:
-        orm_mode = True
-        from_attributes = True
-
+    model_config = ConfigDict(from_attributes=True)
 @router.get("/", response_model=List[JastipResponse])
 def get_jastip_listings(db: Session = Depends(deps.get_db)):
     listings = db.query(JastipListing).filter(JastipListing.is_active == True).order_by(JastipListing.created_at.desc()).all()

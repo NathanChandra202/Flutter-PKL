@@ -2,7 +2,7 @@ from typing import List, Optional
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, ConfigDict
 import os, uuid
 
 from app.api import deps
@@ -29,9 +29,7 @@ class ReportResponse(BaseModel):
     created_at: datetime
     resolved_at: Optional[datetime] = None
 
-    class Config:
-        orm_mode = True
-
+    model_config = ConfigDict(from_attributes=True)
 def _to_response(r: Report) -> ReportResponse:
     # Use fallback if user.profile is not available
     user_name = r.user.email

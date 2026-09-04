@@ -4,7 +4,7 @@ from typing import List, Optional
 from datetime import datetime
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, ConfigDict
 from dateutil.relativedelta import relativedelta
 
 from app.api import deps
@@ -53,10 +53,7 @@ class BookingResponse(BaseModel):
     bukti_bayar_url: Optional[str] = None
     referensi_transaksi: Optional[str] = None
 
-    class Config:
-        orm_mode = True
-
-
+    model_config = ConfigDict(from_attributes=True)
 # ─── Helpers ───────────────────────────────────────────────────────────────────
 
 def _to_booking_response(booking: Booking) -> BookingResponse:

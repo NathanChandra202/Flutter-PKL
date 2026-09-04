@@ -2,7 +2,7 @@ from typing import List, Optional
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, ConfigDict
 
 from app.api import deps
 from app.models.community import SharedTool
@@ -27,10 +27,7 @@ class ToolResponse(BaseModel):
     borrowed_by_name: Optional[str] = None
     borrowed_at: Optional[datetime] = None
 
-    class Config:
-        orm_mode = True 
-        from_attributes = True
-
+    model_config = ConfigDict(from_attributes=True)
 INITIAL_TOOLS = [
     {"name": "Vacuum Cleaner", "icon_name": "cleaning_services"},
     {"name": "Tangga Lipat", "icon_name": "straighten"},
