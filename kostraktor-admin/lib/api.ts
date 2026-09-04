@@ -128,6 +128,7 @@ export interface Booking {
   room_name: string | null;
   user_email: string | null;
   user_name: string | null;
+  bukti_bayar_url: string | null;
 }
 
 export async function getPendingBookingsApi(token: string): Promise<Booking[]> {

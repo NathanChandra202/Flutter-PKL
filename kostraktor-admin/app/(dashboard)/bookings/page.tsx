@@ -200,6 +200,16 @@ export default function BookingsPage() {
                               ✓ Setujui Perpanjangan
                             </button>
                           )}
+                          {b.bukti_bayar_url && (
+                            <a
+                              href={b.bukti_bayar_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-600/20 text-blue-600 rounded-lg text-xs font-medium border border-blue-200 transition-colors whitespace-nowrap"
+                            >
+                              📄 Lihat Bukti
+                            </a>
+                          )}
                         </div>
                       </td>
                     </tr>
