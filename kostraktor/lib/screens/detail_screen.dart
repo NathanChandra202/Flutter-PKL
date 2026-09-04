@@ -8,6 +8,7 @@ import '../utils/app_theme.dart';
 import '../providers/auth_provider.dart';
 import '../utils/format_utils.dart';
 import 'booking_form_screen.dart';
+import 'countdown_screen.dart';
 import 'login_screen.dart';
 import 'photo_viewer_screen.dart';
 
@@ -549,11 +550,49 @@ class _DetailScreenState extends State<DetailScreen> {
               ),
             ),
             const SizedBox(height: 10),
-            // Tombol Ajukan Sewa
+            // Tombol Ajukan Sewa / Lanjutkan Pembayaran
             SizedBox(
               width: double.infinity,
-              child: Builder(
-                builder: (ctx) {
+              child: Consumer<AuthProvider>(
+                builder: (ctx, auth, _) {
+                  // Jika user sudah punya booking PENDING → tampilkan tombol
+                  // "Lanjutkan Pembayaran" yang langsung menuju CountdownScreen
+                  if (auth.isPendingResident && auth.bookingData != null) {
+                    return ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFE65100), // oranye khas 'perlu aksi'
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 4,
+                        shadowColor: Colors.orange.shade200,
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          ctx,
+                          MaterialPageRoute(
+                            builder: (_) => CountdownScreen(
+                              unitData: widget.unitData,
+                              bookingData: auth.bookingData,
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.payment_outlined, size: 20),
+                      label: const Text(
+                        'Lanjutkan Pembayaran',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    );
+                  }
+
+                  // Kondisi normal: tombol Ajukan Sewa
                   return ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryBlack,
@@ -566,10 +605,6 @@ class _DetailScreenState extends State<DetailScreen> {
                       shadowColor: Colors.black38,
                     ),
                     onPressed: () {
-                      final auth = Provider.of<AuthProvider>(
-                        ctx,
-                        listen: false,
-                      );
                       if (!auth.isLoggedIn) {
                         _showLoginPrompt(ctx);
                       } else {

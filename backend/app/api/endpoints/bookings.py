@@ -100,6 +100,25 @@ def create_booking(
     months = max(1, min(booking_in.duration_months, 120))
     end_date = booking_in.start_date + relativedelta(months=months)
 
+    # ── Cek duplikat: tolak jika user sudah punya pesanan aktif untuk kamar ini ──
+    existing_pending = (
+        db.query(Booking)
+        .filter(
+            Booking.user_id == current_user.id,
+            Booking.room_id == room.id,
+            Booking.status.in_(["PENDING", "Pending", "Menunggu Pembayaran"]),
+        )
+        .first()
+    )
+    if existing_pending:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Anda masih memiliki transaksi aktif (ID: {existing_pending.id}) "
+                "untuk kamar ini. Selesaikan atau batalkan terlebih dahulu."
+            ),
+        )
+
     booking = Booking(
         user_id=current_user.id,
         room_id=room.id,

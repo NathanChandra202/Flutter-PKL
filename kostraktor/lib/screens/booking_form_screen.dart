@@ -393,7 +393,7 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
       return;
     }
 
-    Navigator.push(
+    Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (_) =>
