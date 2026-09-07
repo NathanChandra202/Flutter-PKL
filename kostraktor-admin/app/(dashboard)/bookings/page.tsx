@@ -1,9 +1,83 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import type { Booking } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 
+// ─── Modal Bukti Bayar ────────────────────────────────────────────────────────
+function BuktiBayarModal({ url, onClose }: { url: string; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <h3 className="font-semibold text-brand-black text-sm">Bukti Pembayaran</h3>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors text-xl leading-none"
+            aria-label="Tutup"
+          >
+            &times;
+          </button>
+        </div>
+
+        {/* Image */}
+        <div className="relative w-full" style={{ minHeight: 320 }}>
+          <Image
+            src={url}
+            alt="Bukti Pembayaran"
+            fill
+            className="object-contain"
+            unoptimized
+          />
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-3 border-t border-gray-100 flex justify-end">
+          <a
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-colors"
+          >
+            Buka di Tab Baru ↗
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Thumbnail Bukti Bayar ────────────────────────────────────────────────────
+function BuktiBayarThumb({ url, onClick }: { url: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="relative w-12 h-12 rounded-lg overflow-hidden border border-blue-200 hover:border-blue-400 transition-colors group flex-shrink-0"
+      title="Lihat bukti pembayaran"
+    >
+      <Image
+        src={url}
+        alt="Bukti Bayar"
+        fill
+        className="object-cover group-hover:opacity-80 transition-opacity"
+        unoptimized
+      />
+      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
+        <span className="text-white text-[10px] font-semibold">Lihat</span>
+      </div>
+    </button>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 type StatusFilter = "ALL" | "PENDING" | "APPROVED" | "REJECTED";
 
 const STATUS_STYLE: Record<string, string> = {
@@ -17,6 +91,7 @@ export default function BookingsPage() {
   const [filter, setFilter] = useState<StatusFilter>("PENDING");
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   function showToast(msg: string, ok = true) {
     setToast({ msg, ok });
@@ -82,6 +157,11 @@ export default function BookingsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Modal bukti bayar */}
+      {previewUrl && (
+        <BuktiBayarModal url={previewUrl} onClose={() => setPreviewUrl(null)} />
+      )}
+
       {toast && (
         <div className={`fixed top-6 right-6 z-100 px-5 py-3 rounded-xl shadow-lg text-sm font-medium ${toast.ok ? "bg-emerald-500 text-white" : "bg-red-600 text-white"}`}>
           {toast.msg}
@@ -137,7 +217,7 @@ export default function BookingsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200">
-                  {["ID", "Nama Penyewa", "Email", "Kamar", "Tgl Booking", "Mulai Sewa", "Selesai Sewa", "Durasi", "Status", "Aksi"].map((h) => (
+                  {["ID", "Nama Penyewa", "Email", "Kamar", "Tgl Booking", "Mulai Sewa", "Selesai Sewa", "Durasi", "Bukti Bayar", "Status", "Aksi"].map((h) => (
                     <th key={h} className="text-left px-4 py-3.5 text-xs font-semibold text-brand-muted uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -162,6 +242,19 @@ export default function BookingsPage() {
                       <td className="px-4 py-4 text-brand-muted whitespace-nowrap text-xs">
                         {durationMonths ? `${durationMonths} bln` : "—"}
                       </td>
+
+                      {/* ── Kolom Bukti Bayar ── */}
+                      <td className="px-4 py-4">
+                        {b.bukti_bayar_url ? (
+                          <BuktiBayarThumb
+                            url={b.bukti_bayar_url}
+                            onClick={() => setPreviewUrl(b.bukti_bayar_url!)}
+                          />
+                        ) : (
+                          <span className="text-xs text-gray-400 italic">Belum ada</span>
+                        )}
+                      </td>
+
                       <td className="px-4 py-4">
                         <div className="flex flex-col gap-1">
                           <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${STATUS_STYLE[b.status] ?? STATUS_STYLE.PENDING}`}>
@@ -199,16 +292,6 @@ export default function BookingsPage() {
                             >
                               ✓ Setujui Perpanjangan
                             </button>
-                          )}
-                          {b.bukti_bayar_url && (
-                            <a
-                              href={b.bukti_bayar_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-600/20 text-blue-600 rounded-lg text-xs font-medium border border-blue-200 transition-colors whitespace-nowrap"
-                            >
-                              📄 Lihat Bukti
-                            </a>
                           )}
                         </div>
                       </td>

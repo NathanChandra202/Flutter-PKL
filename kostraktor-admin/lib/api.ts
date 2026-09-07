@@ -217,3 +217,41 @@ export async function updateSettingApi(token: string, key: string, value: string
   });
 }
 
+// ─── Users (SuperAdmin only) ──────────────────────────────────────────────────
+export interface AdminUser {
+  id: number;
+  email: string;
+  role: string | null;
+  nama_lengkap: string | null;
+  no_hp: string | null;
+  is_active: boolean;
+  is_face_verified: boolean;
+  created_at: string;
+  current_room_id: number | null;
+}
+
+export async function getUsersApi(token: string): Promise<AdminUser[]> {
+  return apiFetch<AdminUser[]>("/users/", { token });
+}
+
+export async function updateUserRoleApi(
+  token: string,
+  userId: number,
+  roleName: string,
+): Promise<AdminUser> {
+  return apiFetch<AdminUser>(`/users/${userId}/role`, {
+    method: "PUT",
+    body: JSON.stringify({ role_name: roleName }),
+    token,
+  });
+}
+
+export async function toggleUserActiveApi(
+  token: string,
+  userId: number,
+): Promise<AdminUser> {
+  return apiFetch<AdminUser>(`/users/${userId}/toggle-active`, {
+    method: "PUT",
+    token,
+  });
+}

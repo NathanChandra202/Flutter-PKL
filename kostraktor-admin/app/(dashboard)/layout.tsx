@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import type { MeResponse } from "@/lib/api";
 
-import { LayoutDashboard, BedDouble, ClipboardList, ShoppingBag, Wrench, Star, LogOut, ClipboardCheck, Settings } from "lucide-react";
+import { LayoutDashboard, BedDouble, ClipboardList, ShoppingBag, Wrench, Star, LogOut, ClipboardCheck, Settings, Users } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { href: "/tools", label: "Kelola Alat", icon: <Wrench size={18} /> },
   { href: "/reviews", label: "Kelola Ulasan", icon: <Star size={18} /> },
   { href: "/reports", label: "Audit Laporan", icon: <ClipboardCheck size={18} /> },
+  { href: "/users", label: "Kelola User", icon: <Users size={18} />, superAdminOnly: true },
   { href: "/settings", label: "Pengaturan Kost", icon: <Settings size={18} /> },
 ];
 
@@ -76,6 +77,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {NAV_ITEMS.map((item) => {
+            if (item.superAdminOnly && me?.role !== "SuperAdmin") return null;
+
             const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
             return (
               <Link

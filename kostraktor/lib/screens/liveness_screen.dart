@@ -141,7 +141,7 @@ class _LivenessScreenState extends State<LivenessScreen> {
   Future<void> _pickSelfie({bool gallery = false}) async {
     final picked = await _picker.pickImage(
       source: gallery ? ImageSource.gallery : ImageSource.camera,
-      imageQuality: 85,
+      imageQuality: 95,
       preferredCameraDevice: CameraDevice.front,
     );
     if (picked == null) return;
