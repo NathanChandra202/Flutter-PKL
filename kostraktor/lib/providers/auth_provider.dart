@@ -65,6 +65,7 @@ class Review {
 }
 
 class BookingData {
+  final int? id; // ID booking dari backend
   final String nama;
   final String phone;
   final String nik;
@@ -80,6 +81,7 @@ class BookingData {
   final Uint8List? buktiBayarBytes;
 
   BookingData({
+    this.id,
     required this.nama,
     required this.phone,
     required this.nik,
@@ -105,6 +107,41 @@ class BookingData {
       '0',
     );
     return 'KST-$ymd-$rand';
+  }
+
+  /// Create a copy with updated fields
+  BookingData copyWith({
+    int? id,
+    String? nama,
+    String? phone,
+    String? nik,
+    String? roomType,
+    DateTime? bookingTime,
+    DateTime? tanggalMulaiMenghuni,
+    int? durationMonths,
+    bool? waConfirmed,
+    String? referensiTransaksi,
+    int? uniquePaymentCode,
+    Uint8List? ktpBytes,
+    Uint8List? selfieBytes,
+    Uint8List? buktiBayarBytes,
+  }) {
+    return BookingData(
+      id: id ?? this.id,
+      nama: nama ?? this.nama,
+      phone: phone ?? this.phone,
+      nik: nik ?? this.nik,
+      roomType: roomType ?? this.roomType,
+      bookingTime: bookingTime ?? this.bookingTime,
+      tanggalMulaiMenghuni: tanggalMulaiMenghuni ?? this.tanggalMulaiMenghuni,
+      durationMonths: durationMonths ?? this.durationMonths,
+      waConfirmed: waConfirmed ?? this.waConfirmed,
+      referensiTransaksi: referensiTransaksi ?? this.referensiTransaksi,
+      uniquePaymentCode: uniquePaymentCode ?? this.uniquePaymentCode,
+      ktpBytes: ktpBytes ?? this.ktpBytes,
+      selfieBytes: selfieBytes ?? this.selfieBytes,
+      buktiBayarBytes: buktiBayarBytes ?? this.buktiBayarBytes,
+    );
   }
 }
 
@@ -620,7 +657,8 @@ class AuthProvider extends ChangeNotifier {
       }
     }
 
-    _bookingData = data;
+    // Save booking data with the ID from backend
+    _bookingData = data.copyWith(id: bookingId);
     _currentRole = UserRole.pendingResident;
 
     if (_userEmail != null && _registeredUsers.containsKey(_userEmail)) {
@@ -640,7 +678,7 @@ class AuthProvider extends ChangeNotifier {
         email: emailForQueue,
         name: _userName ?? data.nama,
         phone: _userPhone ?? data.phone,
-        bookingData: data,
+        bookingData: _bookingData!,
       ),
     );
 
@@ -1025,28 +1063,50 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// Save bukti bayar + referensi transaksi to the active booking data
-  /// and sync back to the pending approvals queue so admin can see it.
-  void updateBuktiBayar({
+  /// and upload it to the backend, then sync to pending approvals queue.
+  Future<void> updateBuktiBayar({
     required Uint8List buktiBayarBytes,
     required String referensiTransaksi,
-  }) {
+  }) async {
     if (_bookingData == null) return;
 
     // Replace BookingData with updated copy containing bukti bayar
-    _bookingData = BookingData(
-      nama: _bookingData!.nama,
-      phone: _bookingData!.phone,
-      nik: _bookingData!.nik,
-      roomType: _bookingData!.roomType,
-      bookingTime: _bookingData!.bookingTime,
-      tanggalMulaiMenghuni: _bookingData!.tanggalMulaiMenghuni,
-      waConfirmed: true,
-      referensiTransaksi: referensiTransaksi,
-      uniquePaymentCode: _bookingData!.uniquePaymentCode,
-      ktpBytes: _bookingData!.ktpBytes,
-      selfieBytes: _bookingData!.selfieBytes,
+    _bookingData = _bookingData!.copyWith(
       buktiBayarBytes: buktiBayarBytes,
+      referensiTransaksi: referensiTransaksi,
+      waConfirmed: true,
     );
+
+    // Upload bukti bayar to backend if we have a booking ID
+    if (_bookingData!.id != null && _accessToken != null) {
+      try {
+        final request = http.MultipartRequest(
+          'POST',
+          Uri.parse('$_baseUrl/bookings/${_bookingData!.id}/upload-documents'),
+        );
+        request.headers['Authorization'] = 'Bearer $_accessToken';
+
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'bukti_bayar',
+            buktiBayarBytes,
+            filename: 'bukti_bayar.jpg',
+          ),
+        );
+
+        final streamedResponse = await request.send();
+        if (streamedResponse.statusCode == 200) {
+          debugPrint('[UpdateBuktiBayar] Successfully uploaded to backend');
+        } else {
+          debugPrint(
+            '[UpdateBuktiBayar] Failed to upload: ${streamedResponse.statusCode}',
+          );
+        }
+      } catch (e) {
+        debugPrint('[UpdateBuktiBayar] Error uploading to backend: $e');
+        // Continue anyway - local state is updated for admin panel
+      }
+    }
 
     // Sync back to the pending approvals queue so admin sees the latest data
     if (_userEmail != null) {

@@ -60,12 +60,14 @@ class Review {
 }
 
 class BookingData {
+  final int? id; // ID booking dari backend
   final String nama;
   final String phone;
   final String nik;
   final String roomType;
   final DateTime bookingTime;
   final DateTime? tanggalMulaiMenghuni; // Tanggal mulai menghuni
+  final int durationMonths; // Durasi sewa dalam bulan
   bool waConfirmed; // user has sent WA to penjaga kos
   final String referensiTransaksi; // auto-generated reference number
   final int uniquePaymentCode; // guaranteed unique 3-digit code
@@ -74,12 +76,14 @@ class BookingData {
   final Uint8List? buktiBayarBytes;
 
   BookingData({
+    this.id,
     required this.nama,
     required this.phone,
     required this.nik,
     required this.roomType,
     required this.bookingTime,
     this.tanggalMulaiMenghuni,
+    this.durationMonths = 1,
     this.waConfirmed = false,
     String? referensiTransaksi,
     int? uniquePaymentCode,
@@ -98,6 +102,41 @@ class BookingData {
       '0',
     );
     return 'KST-$ymd-$rand';
+  }
+
+  /// Create a copy with updated fields
+  BookingData copyWith({
+    int? id,
+    String? nama,
+    String? phone,
+    String? nik,
+    String? roomType,
+    DateTime? bookingTime,
+    DateTime? tanggalMulaiMenghuni,
+    int? durationMonths,
+    bool? waConfirmed,
+    String? referensiTransaksi,
+    int? uniquePaymentCode,
+    Uint8List? ktpBytes,
+    Uint8List? selfieBytes,
+    Uint8List? buktiBayarBytes,
+  }) {
+    return BookingData(
+      id: id ?? this.id,
+      nama: nama ?? this.nama,
+      phone: phone ?? this.phone,
+      nik: nik ?? this.nik,
+      roomType: roomType ?? this.roomType,
+      bookingTime: bookingTime ?? this.bookingTime,
+      tanggalMulaiMenghuni: tanggalMulaiMenghuni ?? this.tanggalMulaiMenghuni,
+      durationMonths: durationMonths ?? this.durationMonths,
+      waConfirmed: waConfirmed ?? this.waConfirmed,
+      referensiTransaksi: referensiTransaksi ?? this.referensiTransaksi,
+      uniquePaymentCode: uniquePaymentCode ?? this.uniquePaymentCode,
+      ktpBytes: ktpBytes ?? this.ktpBytes,
+      selfieBytes: selfieBytes ?? this.selfieBytes,
+      buktiBayarBytes: buktiBayarBytes ?? this.buktiBayarBytes,
+    );
   }
 }
 
@@ -379,19 +418,10 @@ class AuthProvider extends ChangeNotifier {
     if (_bookingData == null) return;
 
     // Replace BookingData with updated copy containing bukti bayar
-    _bookingData = BookingData(
-      nama: _bookingData!.nama,
-      phone: _bookingData!.phone,
-      nik: _bookingData!.nik,
-      roomType: _bookingData!.roomType,
-      bookingTime: _bookingData!.bookingTime,
-      tanggalMulaiMenghuni: _bookingData!.tanggalMulaiMenghuni,
-      waConfirmed: true,
-      referensiTransaksi: referensiTransaksi,
-      uniquePaymentCode: _bookingData!.uniquePaymentCode,
-      ktpBytes: _bookingData!.ktpBytes,
-      selfieBytes: _bookingData!.selfieBytes,
+    _bookingData = _bookingData!.copyWith(
       buktiBayarBytes: buktiBayarBytes,
+      referensiTransaksi: referensiTransaksi,
+      waConfirmed: true,
     );
 
     // Sync back to the pending approvals queue so admin sees the latest data

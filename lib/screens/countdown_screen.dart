@@ -206,7 +206,8 @@ class _CountdownScreenState extends State<CountdownScreen> {
     final totalFormatted = _formatRupiah(totalAmount);
     final depositFormatted = _formatRupiah(baseAmount);
     final auth = Provider.of<AuthProvider>(context);
-    final isApproved = auth.isResident;
+    // Fix: Only show success when user is actually a resident, not when Admin is testing
+    final isApproved = auth.currentRole == UserRole.resident;
 
     return Scaffold(
       backgroundColor: AppTheme.bgWhite,

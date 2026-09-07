@@ -4,7 +4,18 @@ Backend API sudah berjalan di `http://127.0.0.1:8000`
 
 ## Akun yang Tersedia
 
-### 1. Admin Account
+### 1. SuperAdmin Account (Full Access)
+```
+Email: superadmin@kostraktor.com
+Password: superadmin123
+```
+- **Full Access ke semua fitur**
+- Dapat approve/reject booking
+- Manage rooms dan tools
+- **Kelola User (ubah role, aktifkan/nonaktifkan akun)**
+- Akses ke semua menu admin
+
+### 2. Admin Account
 ```
 Email: admin@kostraktor.com
 Password: admin123
@@ -12,8 +23,9 @@ Password: admin123
 - Akses ke admin panel
 - Dapat approve/reject booking
 - Manage rooms dan tools
+- **TIDAK bisa kelola user**
 
-### 2. User Account
+### 3. User Account
 ```
 Email: user@test.com
 Password: test123
