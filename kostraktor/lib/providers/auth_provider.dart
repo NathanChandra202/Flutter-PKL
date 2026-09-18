@@ -570,6 +570,64 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Meminta pengiriman OTP ke email
+  /// Returns null on success, error message on failure
+  Future<String?> forgotPassword(String email) async {
+    final trimmedEmail = email.trim().toLowerCase();
+    if (trimmedEmail.isEmpty) return 'Email harus diisi.';
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/auth/forgot-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'email': trimmedEmail}),
+      );
+      if (response.statusCode == 200 || response.statusCode == 404) {
+        return null; // Return null (success) even on 404 for security
+      }
+      return 'Gagal memproses permintaan.';
+    } catch (e) {
+      return 'Terjadi kesalahan koneksi. Pastikan server menyala.';
+    }
+  }
+
+  /// Memverifikasi kode OTP 6-digit
+  Future<String?> verifyResetOtp(String email, String otp) async {
+    final trimmedEmail = email.trim().toLowerCase();
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/auth/verify-reset-otp'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'email': trimmedEmail, 'otp': otp.trim()}),
+      );
+      if (response.statusCode == 200) {
+        return null;
+      }
+      final err = json.decode(response.body);
+      return err['detail'] ?? 'Kode OTP tidak valid.';
+    } catch (e) {
+      return 'Terjadi kesalahan koneksi. Pastikan server menyala.';
+    }
+  }
+
+  /// Mengganti kata sandi baru
+  Future<String?> resetPassword(String email, String otp, String newPassword) async {
+    final trimmedEmail = email.trim().toLowerCase();
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/auth/reset-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'email': trimmedEmail, 'otp': otp.trim(), 'new_password': newPassword}),
+      );
+      if (response.statusCode == 200) {
+        return null;
+      }
+      final err = json.decode(response.body);
+      return err['detail'] ?? 'Gagal mereset kata sandi.';
+    } catch (e) {
+      return 'Terjadi kesalahan koneksi. Pastikan server menyala.';
+    }
+  }
+
   /// Called after booking form is submitted — upgrades status to pendingResident
   Future<String?> submitBooking(BookingData data) async {
     if (_accessToken == null)

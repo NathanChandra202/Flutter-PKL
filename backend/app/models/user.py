@@ -13,6 +13,9 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
+    reset_otp = Column(String, nullable=True)
+    reset_otp_expires = Column(DateTime, nullable=True)
+    
     role_id = Column(Integer, ForeignKey("roles.id"))
     role = relationship("Role", back_populates="users")
     

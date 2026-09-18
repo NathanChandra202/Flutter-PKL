@@ -138,3 +138,63 @@ def read_users_me(current_user: User = Depends(deps.get_current_active_user)):
         "current_room_id": current_user.current_room_id,
         "current_room_name": current_user.current_room.name if current_user.current_room else None,
     }
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class VerifyOtpRequest(BaseModel):
+    email: EmailStr
+    otp: str
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    otp: str
+    new_password: str
+
+@router.post("/forgot-password")
+def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(deps.get_db)):
+    user = db.query(User).filter(User.email == req.email).first()
+    if not user:
+        # Prevent user enumeration by returning success anyway, or throw 404. Since this is an internal app, 404 is fine.
+        raise HTTPException(status_code=404, detail="Email tidak terdaftar")
+    
+    import random
+    import string
+    otp_code = ''.join(random.choices(string.digits, k=6))
+    
+    user.reset_otp = otp_code
+    user.reset_otp_expires = datetime.now(timezone.utc) + timedelta(minutes=15)
+    db.commit()
+    
+    from app.services.email_service import send_reset_password_email
+    send_reset_password_email(user.email, otp_code)
+    
+    return {"message": "OTP sent to email"}
+
+@router.post("/verify-reset-otp")
+def verify_reset_otp(req: VerifyOtpRequest, db: Session = Depends(deps.get_db)):
+    user = db.query(User).filter(User.email == req.email).first()
+    if not user or user.reset_otp != req.otp:
+        raise HTTPException(status_code=400, detail="Kode OTP tidak valid")
+    
+    if user.reset_otp_expires and user.reset_otp_expires < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="Kode OTP sudah kedaluwarsa")
+        
+    return {"message": "OTP valid"}
+
+@router.post("/reset-password")
+def reset_password(req: ResetPasswordRequest, db: Session = Depends(deps.get_db)):
+    user = db.query(User).filter(User.email == req.email).first()
+    if not user or user.reset_otp != req.otp:
+        raise HTTPException(status_code=400, detail="Kode OTP tidak valid")
+        
+    if user.reset_otp_expires and user.reset_otp_expires < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="Kode OTP sudah kedaluwarsa")
+        
+    # Update password
+    user.password_hash = security.get_password_hash(req.new_password)
+    user.reset_otp = None
+    user.reset_otp_expires = None
+    db.commit()
+    
+    return {"message": "Password berhasil direset"}

@@ -8,6 +8,7 @@ import '../providers/auth_provider.dart';
 import 'main_navigation.dart';
 import 'admin_panel_screen.dart';
 import 'home_screen.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -257,51 +258,9 @@ class _LoginFormState extends State<_LoginForm> {
             alignment: Alignment.centerRight,
             child: TextButton(
               onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    title: const Text('Lupa Kata Sandi', style: TextStyle(fontWeight: FontWeight.bold)),
-                    content: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Masukkan email akun kamu. Kami akan simulasikan pengiriman link reset kata sandi.'),
-                        const SizedBox(height: 16),
-                        TextField(
-                          keyboardType: TextInputType.emailAddress,
-                          decoration: InputDecoration(
-                            hintText: 'Email aktif kamu',
-                            hintStyle: const TextStyle(color: AppTheme.textMuted),
-                            prefixIcon: const Icon(Icons.mail_outline, color: AppTheme.textMuted, size: 20),
-                            filled: true,
-                            fillColor: Colors.grey.shade50,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
-                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppTheme.primaryBlack)),
-                          ),
-                        ),
-                      ],
-                    ),
-                    actions: [
-                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal', style: TextStyle(color: AppTheme.textMuted))),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryBlack, foregroundColor: Colors.white, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: const Text('Link reset kata sandi telah dikirim ke email kamu.'),
-                              backgroundColor: Colors.green.shade700,
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            ),
-                          );
-                        },
-                        child: const Text('Kirim Link Reset'),
-                      ),
-                    ],
-                  ),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
                 );
               },
               child: const Text('Lupa Kata Sandi?', style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),

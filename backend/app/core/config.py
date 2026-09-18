@@ -20,6 +20,12 @@ class Settings(BaseSettings):
     VENUSVERSE_API_KEY: str = ""
     VENUSVERSE_SESSION_ID: str = ""
     
+    # SMTP Email Settings
+    SMTP_SERVER: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = "26computer.dev@gmail.com"
+    SMTP_PASSWORD: str = "" # Set via .env
+    
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
