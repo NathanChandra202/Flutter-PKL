@@ -628,7 +628,38 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Update nama & nomor telepon user
+  Future<String?> updateProfile({String? namaLengkap, String? phone}) async {
+    if (_accessToken == null) return 'Sesi telah berakhir, silakan login kembali.';
+    try {
+      final body = <String, String>{};
+      if (namaLengkap != null) body['nama_lengkap'] = namaLengkap;
+      if (phone != null) body['phone'] = phone;
+      
+      final response = await http.patch(
+        Uri.parse('$_baseUrl/auth/me'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_accessToken',
+        },
+        body: json.encode(body),
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['nama_lengkap'] != null) _userName = data['nama_lengkap'];
+        if (data['phone'] != null) _userPhone = data['phone'];
+        notifyListeners();
+        return null;
+      }
+      final err = json.decode(response.body);
+      return err['detail'] ?? 'Gagal memperbarui profil.';
+    } catch (e) {
+      return 'Terjadi kesalahan koneksi. Pastikan server menyala.';
+    }
+  }
+
   /// Called after booking form is submitted — upgrades status to pendingResident
+
   Future<String?> submitBooking(BookingData data) async {
     if (_accessToken == null)
       return 'Sesi telah berakhir, silakan login kembali.';

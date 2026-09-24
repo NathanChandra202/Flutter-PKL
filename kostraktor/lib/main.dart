@@ -7,6 +7,7 @@ import 'screens/splash_screen.dart';
 import 'providers/auth_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'services/notification_service.dart';
 class MyHttpOverrides extends HttpOverrides {
   @override
   HttpClient createHttpClient(SecurityContext? context) {
@@ -23,6 +24,7 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  await NotificationService.initialize();
   // Initialize Hive for local storage
   await Hive.initFlutter();
   // We will open boxes here later when models are ready

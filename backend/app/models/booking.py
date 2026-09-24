@@ -12,7 +12,7 @@ class Booking(Base):
     room_id = Column(Integer, ForeignKey("kost_rooms.id"))
     
     booking_date = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    start_date = Column(DateTime)
+    start_date = Column(DateTime)   
     
     status = Column(String, default="PENDING") # PENDING, APPROVED, REJECTED
 

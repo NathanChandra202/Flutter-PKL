@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../utils/app_theme.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
+import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -406,7 +407,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
 
             _menuTile(Icons.settings_outlined, 'Pengaturan Akun', () {
-              _showPengaturanSheet(context, auth);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+              );
             }),
             const SizedBox(height: 12),
 

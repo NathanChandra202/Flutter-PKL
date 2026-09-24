@@ -134,9 +134,38 @@ def read_users_me(current_user: User = Depends(deps.get_current_active_user)):
         "email": current_user.email,
         "role": current_user.role.name if current_user.role else None,
         "nama_lengkap": current_user.profile.nama_lengkap if current_user.profile else None,
+        "phone": current_user.profile.no_hp if current_user.profile else None,
         "is_face_verified": current_user.profile.is_face_verified if current_user.profile else False,
         "current_room_id": current_user.current_room_id,
         "current_room_name": current_user.current_room.name if current_user.current_room else None,
+    }
+
+class UpdateProfileRequest(BaseModel):
+    nama_lengkap: str | None = None
+    phone: str | None = None
+
+@router.patch("/me", response_model=dict)
+def update_profile_me(
+    req: UpdateProfileRequest,
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    profile = current_user.profile
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profil tidak ditemukan")
+    
+    if req.nama_lengkap is not None:
+        profile.nama_lengkap = req.nama_lengkap.strip()
+    if req.phone is not None:
+        profile.no_hp = req.phone.strip()
+    
+    db.commit()
+    db.refresh(profile)
+    
+    return {
+        "message": "Profil berhasil diperbarui",
+        "nama_lengkap": profile.nama_lengkap,
+        "phone": profile.no_hp,
     }
 
 class ForgotPasswordRequest(BaseModel):
