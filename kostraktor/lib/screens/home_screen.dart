@@ -34,8 +34,16 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadRooms() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final rooms = await auth.fetchRooms();
-    
+
     if (mounted) {
+      // Hapus cache gambar lama agar gambar terbaru dari server selalu dimuat ulang
+      for (final unit in _allUnits) {
+        final oldImageUrl = unit['image'] as String?;
+        if (oldImageUrl != null && oldImageUrl.isNotEmpty) {
+          CachedNetworkImage.evictFromCache(oldImageUrl);
+        }
+      }
+
       setState(() {
         _allUnits = rooms.map((r) {
           return {
@@ -591,6 +599,9 @@ class _UnitCard extends StatelessWidget {
                       children: [
                         CachedNetworkImage(
                           imageUrl: unit['image'],
+                          // cacheKey = URL itu sendiri, sehingga jika admin
+                          // ganti gambar (URL baru), cache lama otomatis tidak dipakai
+                          cacheKey: unit['image'],
                           fit: BoxFit.cover,
                           placeholder: (context, url) => Shimmer.fromColors(
                             baseColor: Colors.grey.shade200,
