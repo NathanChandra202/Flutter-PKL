@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import '../utils/app_constants.dart';
 import '../utils/app_theme.dart';
 import '../providers/auth_provider.dart';
@@ -28,64 +27,8 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadRooms();
     });
-    // FCM foreground listener
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      final data = message.data;
-      if (data['type'] == 'rental_expiry' && mounted) {
-        _showRentalExpiryDialog(
-          title: message.notification?.title ?? 'Masa Sewa Habis',
-          body: message.notification?.body ?? 'Masa sewa kamu telah berakhir. Segera hubungi admin untuk perpanjangan.',
-        );
-      }
-    });
-  }
-
-  void _showRentalExpiryDialog({required String title, required String body}) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 64, height: 64,
-              decoration: BoxDecoration(
-                color: Colors.orange.shade50,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.orange.shade200, width: 2),
-              ),
-              child: Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700, size: 32),
-            ),
-            const SizedBox(height: 16),
-            Text(title,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                textAlign: TextAlign.center),
-            const SizedBox(height: 8),
-            Text(body,
-                style: const TextStyle(color: AppTheme.textMuted, fontSize: 13, height: 1.5),
-                textAlign: TextAlign.center),
-          ],
-        ),
-        actions: [
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryBlack,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Mengerti', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ),
-        ],
-      ),
-    );
+    // FCM foreground handler sekarang ditangani secara global
+    // oleh NotificationService di main.dart — tidak perlu listener di sini.
   }
 
   Future<void> _loadRooms() async {
